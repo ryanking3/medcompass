@@ -40,7 +40,7 @@ button:not(:disabled):active { transform: translateY(1px); }
   --line: #34433e;
   --canvas: #161d1b;
   --paper: #202925;
-  --navy: #dfeae4;
+  --navy: #294538;
   --sage: #203a30;
   --teal: #7fb49a;
   --gold: #d8aa59;
@@ -143,6 +143,40 @@ button:not(:disabled):active { transform: translateY(1px); }
 .dark-mode .topic-modal { background: #202925; color: #e7eee9; }.dark-mode .upload-modal h2,
 .dark-mode .topic-modal h2 { color: #e7eee9; }.dark-mode .modal-intro,
 .dark-mode .topic-modal p { color: #abb9b2; }.dark-mode .file-drop { background: #1c2722; border-color: #496452; }.dark-mode .file-drop.selected, .dark-mode .file-drop:hover { background: #243a2e; }.dark-mode .file-drop small { color: #9dadA5; }.dark-mode .topic-modal :is(input, textarea, select) { background: #18211e; border-color: #3b4c44; color: #e4ece6; }.dark-mode .acknowledgement { color: #b3c2bb; }
+
+/* Surface-level corrections deliberately outrank the component-scoped prototype styles. */
+.app-shell.dark-mode .primary,
+.app-shell.dark-mode .chat-compose button { color: #102219; background: #82b99a; }
+.app-shell.dark-mode .dark { color: #f0f6f1; background: #294538; }
+.app-shell.dark-mode .ghost { color: #dce7e0; background: #293630; }
+.app-shell.dark-mode .danger { color: #f09a9a; }
+.app-shell.dark-mode :is(.scope-label select, .review-header select) { color: #dce8e1; background: #1b2521; border-color: #3d5047; }
+.app-shell.dark-mode :is(.modal-close, .topic-close) { color: #cbd7d0; background: #2b3832; }
+
+.app-shell.dark-mode :is(.student-home, .library-page, .page, .notes-workspace) :is(h1, h2, h3, strong) { color: #e8eeea !important; }
+.app-shell.dark-mode .student-home :is(.home-header > div > p:not(.eyebrow), .hero-course p:not(.eyebrow), .hero-progress small, .continue-study small, .topic-card p, .topic-card-footer, .home-library p:not(.eyebrow)) { color: #a9b8b0 !important; }
+.app-shell.dark-mode .student-home .home-library h2 { color: #ebd9b6 !important; }
+.app-shell.dark-mode .student-home .home-library p:not(.eyebrow) { color: #c9b68e !important; }
+.app-shell.dark-mode .student-home .hero-course button { color: #a4d8b5; }
+
+.app-shell.dark-mode .library-page :is(.library-header p:not(.eyebrow), .featured-copy > p, .source-list small, .library-notice p, .source-meta) { color: #a8b7af !important; }
+.app-shell.dark-mode .library-page :is(.featured-copy h2, .library-section-heading h2) { color: #e8eeea !important; }
+.app-shell.dark-mode .library-page :is(.featured-source, .source-list button) { color: #e2ebe5; }
+
+.app-shell.dark-mode .page :is(.objective, .continue-panel p:not(.eyebrow), .cards-panel p:not(.eyebrow), .source-info small, .upload-source small, .note-row small, .activity-row small, .review-header label, .card-field span, .source-panel blockquote) { color: #a7b6ae !important; }
+.app-shell.dark-mode .page .activity-icon { color: #e9bd70; background: #3e3423; }
+.app-shell.dark-mode .page .note-icon { color: #91c9a8; background: #233d30; }
+
+.app-shell.dark-mode .reader-page :is(.reader-header, .reader-index, .tutor-panel) :is(h1, h2, h3, strong) { color: #e6eee8 !important; }
+.app-shell.dark-mode .reader-page :is(.reader-title span, .reader-index > button, .scope-label, .assistant-message) { color: #adbbb4 !important; }
+.app-shell.dark-mode .reader-page .reader-index > button.index-active { color: #b9e5c4 !important; }
+
+.app-shell.dark-mode .notes-workspace :is(.notes-header, .notes-list, .note-editor, .note-tools) :is(h1, h2, h3, strong) { color: #e8eeea !important; }
+.app-shell.dark-mode .notes-workspace :is(.saved-note small, .note-citation small, .editor-toolbar) { color: #a7b7ae !important; }
+.app-shell.dark-mode .notes-workspace .note-tools > button { color: #c5ded0; }
+
+.app-shell.dark-mode .card-review-layout :is(.review-panel, .source-panel) :is(h1, h2, h3, strong) { color: #e8eeea !important; }
+.app-shell.dark-mode .export-bar { color: #adbbb4; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
