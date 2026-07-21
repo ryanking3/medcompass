@@ -13,4 +13,13 @@ Upload a textbook chapter or lecture PDF, read it, ask source-cited questions, s
 
 ## Status
 
-Planning and UX specification.
+Static UI prototype complete. Authentication, private uploads, and AI retrieval are intentionally not connected yet.
+
+## Run locally
+
+```sh
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to explore the dashboard, textbook reader, cited-tutor interface, and card-review flow using local sample data.
