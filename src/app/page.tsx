@@ -38,6 +38,8 @@ function Icon({ children }: { children: React.ReactNode }) {
 export default function Home() {
   const [view, setView] = useState<View>("dashboard");
   const [toast, setToast] = useState("");
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [topicOpen, setTopicOpen] = useState(false);
 
   const notify = (message: string) => {
     setToast(message);
@@ -74,7 +76,7 @@ export default function Home() {
           <button className="topic-item active" onClick={() => setView("dashboard")}>Cardiac cycle</button>
           <button className="topic-item" onClick={() => notify("This is a static prototype; only Cardiac cycle is available.")}>Cardiac output</button>
           <button className="topic-item" onClick={() => notify("This is a static prototype; only Cardiac cycle is available.")}>ECG fundamentals</button>
-          <button className="subtle-button add-topic" onClick={() => notify("Topic creation will be connected with the workspace backend.")}>+ New topic</button>
+          <button className="subtle-button add-topic" onClick={() => setTopicOpen(true)}>+ New topic</button>
         </div>
 
         <div className="sidebar-footer">
@@ -87,17 +89,19 @@ export default function Home() {
       </aside>
 
       <section className="content-area">
-        {view === "dashboard" && <Dashboard onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} notify={notify} />}
+        {view === "dashboard" && <Dashboard onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
         {view === "reader" && <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} notify={notify} />}
         {view === "cards" && <Cards onBack={() => setView("dashboard")} notify={notify} />}
       </section>
 
+      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} />}
+      {topicOpen && <TopicModal onClose={() => setTopicOpen(false)} notify={notify} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
   );
 }
 
-function Dashboard({ onOpenReader, onOpenCards, notify }: { onOpenReader: () => void; onOpenCards: () => void; notify: (message: string) => void }) {
+function Dashboard({ onOpenReader, onOpenCards, onOpenUpload, notify }: { onOpenReader: () => void; onOpenCards: () => void; onOpenUpload: () => void; notify: (message: string) => void }) {
   return (
     <div className="page dashboard-page">
       <header className="page-header">
@@ -106,7 +110,7 @@ function Dashboard({ onOpenReader, onOpenCards, notify }: { onOpenReader: () => 
           <h1>Cardiac cycle</h1>
           <p className="objective"><span>Learning objective</span> Explain the phases of the cardiac cycle and the pressure changes that drive them.</p>
         </div>
-        <button className="button primary" onClick={() => notify("PDF upload will be connected once the secure storage backend is in place.")}>+ Add source</button>
+        <button className="button primary" onClick={onOpenUpload}>+ Add source</button>
       </header>
 
       <section className="dashboard-grid">
@@ -125,7 +129,7 @@ function Dashboard({ onOpenReader, onOpenCards, notify }: { onOpenReader: () => 
             <span className="source-info"><strong>Cardiovascular lecture 03</strong><small>Professor slides · 42 pages</small></span>
             <span className="source-status">Ready <span>→</span></span>
           </button>
-          <button className="upload-source" onClick={() => notify("Upload is deliberately deferred until private storage is configured.")}>
+          <button className="upload-source" onClick={onOpenUpload}>
             <span>+</span><div><strong>Add a source</strong><small>Textbook chapter, lecture, or permitted PDF</small></div>
           </button>
         </article>
@@ -162,6 +166,92 @@ function Dashboard({ onOpenReader, onOpenCards, notify }: { onOpenReader: () => 
           <span className="activity-arrow">→</span>
         </button>
       </section>
+    </div>
+  );
+}
+
+function UploadModal({ onClose, notify }: { onClose: () => void; notify: (message: string) => void }) {
+  const [fileName, setFileName] = useState("");
+  const [stage, setStage] = useState<"choose" | "processing" | "ready">("choose");
+
+  const startProcessing = () => {
+    if (!fileName) return;
+    setStage("processing");
+    window.setTimeout(() => setStage("ready"), 1400);
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="upload-modal" role="dialog" aria-modal="true" aria-labelledby="upload-title" onMouseDown={(event) => event.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close upload dialog">×</button>
+        <p className="eyebrow">Add a private source</p>
+        <h2 id="upload-title">Bring a textbook or lecture into this topic</h2>
+        <p className="modal-intro">Your source will be available only in this study workspace. Upload only material you are permitted to use, and never upload patient-identifiable information.</p>
+
+        {stage === "choose" && <>
+          <label className={fileName ? "file-drop selected" : "file-drop"}>
+            <input type="file" accept="application/pdf" onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")} />
+            <span className="file-icon">↑</span>
+            <strong>{fileName || "Choose a PDF"}</strong>
+            <small>{fileName ? "Ready to process in the prototype" : "Textbook chapter, lecture, or other permitted study PDF"}</small>
+          </label>
+          <label className="acknowledgement"><input type="checkbox" defaultChecked /> <span>I have the right to upload this material and understand it is for my own study use.</span></label>
+          <div className="modal-actions"><button className="button ghost" onClick={onClose}>Cancel</button><button className="button primary" disabled={!fileName} onClick={startProcessing}>Add source →</button></div>
+          <p className="prototype-note">Prototype state only — the file is not uploaded or retained yet.</p>
+        </>}
+
+        {stage === "processing" && <div className="processing-state"><div className="processing-orb"><span /></div><h3>Preparing your source</h3><p>Extracting pages and creating a private study index…</p><div className="progress-track"><span /></div><small>{fileName}</small></div>}
+
+        {stage === "ready" && <div className="ready-state"><div className="ready-check">✓</div><h3>Source is ready to study</h3><p><strong>{fileName}</strong> is attached to Cardiac cycle. In the connected product, this is where page extraction and indexing will have completed.</p><button className="button primary" onClick={() => { onClose(); notify("Source added to Cardiac cycle."); }}>Done</button></div>}
+
+        <style jsx>{`
+          .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(23, 36, 35, .35); backdrop-filter: blur(4px); }
+          .upload-modal { width: min(510px, 100%); position: relative; background: #fffefa; border-radius: 14px; padding: 34px; box-shadow: 0 24px 80px rgba(22, 40, 38, .28); }
+          .modal-close { position: absolute; top: 17px; right: 17px; width: 31px; height: 31px; border-radius: 50%; border: 0; background: #eef1ed; color: #5a6866; font-size: 21px; line-height: 1; }
+          .upload-modal h2 { max-width: 400px; margin: 0 0 12px; font: 27px/1.16 Georgia, serif; font-weight: 500; letter-spacing: -.5px; }
+          .modal-intro { margin: 0 0 23px; color: #5e6d69; font-size: 13px; line-height: 1.55; }
+          .file-drop { min-height: 146px; display: grid; place-items: center; align-content: center; gap: 5px; padding: 18px; border: 1px dashed #aabbb1; border-radius: 9px; background: #f8fbf7; color: #426d60; text-align: center; cursor: pointer; }
+          .file-drop:hover, .file-drop.selected { background: #eff7f0; border-color: #5e957c; }.file-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+          .file-icon { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 3px; border-radius: 50%; background: #d9ebe0; color: #39765e; font-weight: 700; font-size: 20px; }.file-drop strong { font-size: 13px; }.file-drop small { color: #73827b; font-size: 11px; }
+          .acknowledgement { display: flex; gap: 9px; align-items: flex-start; margin: 16px 0; color: #63716d; font-size: 11px; line-height: 1.45; }.acknowledgement input { margin: 2px 0 0; accent-color: #497970; }.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }.prototype-note { margin: 15px 0 0; color: #929b95; text-align: center; font-size: 10px; }
+          .processing-state, .ready-state { min-height: 255px; display: grid; place-items: center; align-content: center; text-align: center; }.processing-state h3, .ready-state h3 { margin: 14px 0 7px; font: 22px Georgia, serif; font-weight: 500; }.processing-state p, .ready-state p { max-width: 340px; margin: 0; color: #60716c; font-size: 13px; line-height: 1.55; }
+          .processing-orb, .ready-check { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 50%; background: #e5f1e8; color: #39765e; }.processing-orb span { width: 25px; height: 25px; border: 3px solid #9fc4ab; border-top-color: #36735b; border-radius: 50%; animation: spin 900ms linear infinite; }.progress-track { width: 230px; height: 6px; margin: 20px 0 9px; border-radius: 99px; overflow: hidden; background: #e7ece7; }.progress-track span { display: block; width: 72%; height: 100%; border-radius: inherit; background: #679a7a; animation: progress 1.2s ease-in-out infinite alternate; }.processing-state small { color: #87918c; font-size: 10px; }.ready-check { font-size: 28px; }.ready-state .button { margin-top: 21px; }
+          @keyframes spin { to { transform: rotate(360deg); } } @keyframes progress { from { transform: translateX(-18%); } to { transform: translateX(38%); } }
+        `}</style>
+      </section>
+    </div>
+  );
+}
+
+function TopicModal({ onClose, notify }: { onClose: () => void; notify: (message: string) => void }) {
+  const [topic, setTopic] = useState("");
+
+  const createTopic = (event: FormEvent) => {
+    event.preventDefault();
+    if (!topic.trim()) return;
+    onClose();
+    notify(`${topic.trim()} was created in Graduate Entry Medicine.`);
+  };
+
+  return (
+    <div className="topic-backdrop" role="presentation" onMouseDown={onClose}>
+      <form className="topic-modal" role="dialog" aria-modal="true" aria-labelledby="topic-title" onSubmit={createTopic} onMouseDown={(event) => event.stopPropagation()}>
+        <button className="topic-close" type="button" onClick={onClose} aria-label="Close topic dialog">×</button>
+        <p className="eyebrow">New study topic</p>
+        <h2 id="topic-title">Create a focused place to study</h2>
+        <p>Topics keep sources, notes, tutor conversations, and cards together around one area of learning.</p>
+        <label>Course<select defaultValue="Graduate Entry Medicine"><option>Graduate Entry Medicine</option></select></label>
+        <label>Module <input defaultValue="Cardiovascular system" /></label>
+        <label>Topic <input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="e.g. Cardiac output" autoFocus /></label>
+        <label>Learning objective <textarea placeholder="e.g. Explain the factors that determine cardiac output" /></label>
+        <div className="topic-actions"><button className="button ghost" type="button" onClick={onClose}>Cancel</button><button className="button primary" disabled={!topic.trim()} type="submit">Create topic →</button></div>
+        <small>Prototype state only — topics are not persisted until the workspace backend is connected.</small>
+        <style jsx>{`
+          .topic-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(23, 36, 35, .35); backdrop-filter: blur(4px); }
+          .topic-modal { width: min(500px, 100%); position: relative; display: grid; gap: 13px; background: #fffefa; border-radius: 14px; padding: 34px; box-shadow: 0 24px 80px rgba(22, 40, 38, .28); }.topic-close { position: absolute; top: 17px; right: 17px; width: 31px; height: 31px; border-radius: 50%; border: 0; background: #eef1ed; color: #5a6866; font-size: 21px; line-height: 1; }
+          h2 { max-width: 380px; margin: -2px 0 0; font: 27px/1.16 Georgia, serif; font-weight: 500; letter-spacing: -.5px; } p { margin: 0 0 5px; color: #5e6d69; font-size: 13px; line-height: 1.55; } label { display: grid; gap: 6px; color: #5e6d69; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; } input, textarea, select { width: 100%; border: 1px solid #d8ded9; border-radius: 7px; padding: 10px; color: #2b3838; background: white; font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none; outline-color: #497970; } textarea { min-height: 75px; resize: vertical; }.topic-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }.topic-modal small { color: #929b95; text-align: center; font-size: 10px; }
+        `}</style>
+      </form>
     </div>
   );
 }
