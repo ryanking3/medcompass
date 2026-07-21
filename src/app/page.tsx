@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState, useSyncExternalStore } from "react";
+import { FormEvent, useState } from "react";
 
 type View = "home" | "library" | "dashboard" | "reader" | "notes" | "cards";
 
@@ -40,14 +40,6 @@ export default function Home() {
   const [toast, setToast] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
-  const darkMode = useSyncExternalStore(
-    (callback) => {
-      window.addEventListener("medcompass-theme", callback);
-      return () => window.removeEventListener("medcompass-theme", callback);
-    },
-    () => window.localStorage.getItem("medcompass-theme") === "dark",
-    () => false,
-  );
 
   const notify = (message: string) => {
     setToast(message);
@@ -55,7 +47,7 @@ export default function Home() {
   };
 
   return (
-    <main className={darkMode ? "app-shell dark-mode" : "app-shell"}>
+    <main className="app-shell">
       <aside className="sidebar">
         <Brand />
         <nav className="primary-nav" aria-label="Primary navigation">
@@ -89,12 +81,6 @@ export default function Home() {
           <button className="topic-item" onClick={() => notify("This is a static prototype; only Cardiac cycle is available.")}>ECG fundamentals</button>
           <button className="subtle-button add-topic" onClick={() => setTopicOpen(true)}>+ New topic</button>
         </div>
-
-        <button className="theme-toggle" onClick={() => { const next = !darkMode; window.localStorage.setItem("medcompass-theme", next ? "dark" : "light"); window.dispatchEvent(new Event("medcompass-theme")); }} aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}>
-          <span className="theme-toggle-icon" aria-hidden="true">{darkMode ? "☀" : "☾"}</span>
-          <span>{darkMode ? "Light mode" : "Dark mode"}</span>
-          <span className={darkMode ? "theme-switch enabled" : "theme-switch"}><i /></span>
-        </button>
 
         <div className="sidebar-footer">
           <button className="profile-button" onClick={() => notify("Account settings will be added with authentication.")}>
