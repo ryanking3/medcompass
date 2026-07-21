@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-type View = "dashboard" | "reader" | "cards";
+type View = "dashboard" | "reader" | "notes" | "cards";
 
 const cards = [
   {
@@ -57,6 +57,9 @@ export default function Home() {
           <button className="nav-item" onClick={() => notify("Your library will appear here once sources are uploaded.")}>
             <Icon>▤</Icon> Library
           </button>
+          <button className={view === "notes" ? "nav-item active" : "nav-item"} onClick={() => setView("notes")}>
+            <Icon>↗</Icon> Notes
+          </button>
           <button className={view === "cards" ? "nav-item active" : "nav-item"} onClick={() => setView("cards")}>
             <Icon>◇</Icon> Cards
           </button>
@@ -89,8 +92,9 @@ export default function Home() {
       </aside>
 
       <section className="content-area">
-        {view === "dashboard" && <Dashboard onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
-        {view === "reader" && <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} notify={notify} />}
+        {view === "dashboard" && <Dashboard onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
+        {view === "reader" && <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />}
+        {view === "notes" && <Notes onBack={() => setView("dashboard")} notify={notify} />}
         {view === "cards" && <Cards onBack={() => setView("dashboard")} notify={notify} />}
       </section>
 
@@ -101,7 +105,7 @@ export default function Home() {
   );
 }
 
-function Dashboard({ onOpenReader, onOpenCards, onOpenUpload, notify }: { onOpenReader: () => void; onOpenCards: () => void; onOpenUpload: () => void; notify: (message: string) => void }) {
+function Dashboard({ onOpenReader, onOpenCards, onOpenNotes, onOpenUpload, notify }: { onOpenReader: () => void; onOpenCards: () => void; onOpenNotes: () => void; onOpenUpload: () => void; notify: (message: string) => void }) {
   return (
     <div className="page dashboard-page">
       <header className="page-header">
@@ -147,7 +151,7 @@ function Dashboard({ onOpenReader, onOpenCards, onOpenUpload, notify }: { onOpen
         </article>
 
         <article className="panel notes-panel">
-          <div className="panel-heading"><div><p className="eyebrow">Notes</p><h2>Two saved notes</h2></div><button className="text-button" onClick={() => notify("The notes editor will arrive after the reader flow is wired.")}>Open notes</button></div>
+          <div className="panel-heading"><div><p className="eyebrow">Notes</p><h2>Two saved notes</h2></div><button className="text-button" onClick={onOpenNotes}>Open notes</button></div>
           <div className="note-row"><span className="note-icon">↗</span><div><strong>Ventricular filling</strong><small>From Guyton &amp; Hall, p. 11</small></div></div>
           <div className="note-row"><span className="note-icon">↗</span><div><strong>Heart sounds and valve closure</strong><small>From lecture 03, slide 17</small></div></div>
         </article>
@@ -166,6 +170,27 @@ function Dashboard({ onOpenReader, onOpenCards, onOpenUpload, notify }: { onOpen
           <span className="activity-arrow">→</span>
         </button>
       </section>
+    </div>
+  );
+}
+
+function Notes({ onBack, notify }: { onBack: () => void; notify: (message: string) => void }) {
+  const [title, setTitle] = useState("Ventricular filling");
+  const [body, setBody] = useState("During ventricular diastole, the atrioventricular valves are open and blood moves from the atria into the ventricles. Most ventricular filling occurs passively; atrial contraction contributes the final portion of end-diastolic volume.");
+
+  return (
+    <div className="notes-workspace">
+      <header className="notes-header"><button className="back-link" onClick={onBack}>← <span>Cardiac cycle</span></button><div><p className="eyebrow">Topic notes</p><h1>Keep the useful bits</h1></div><button className="button primary" onClick={() => notify("A new blank note was created in this prototype.")}>+ New note</button></header>
+      <div className="notes-layout">
+        <aside className="notes-list"><div className="notes-search">⌕ <input placeholder="Search notes" /></div><p className="eyebrow">Saved notes</p><button className="saved-note active"><strong>Ventricular filling</strong><small>Guyton &amp; Hall · p. 11</small></button><button className="saved-note"><strong>Heart sounds and valve closure</strong><small>Lecture 03 · slide 17</small></button><button className="saved-note"><strong>Isovolumetric contraction</strong><small>Guyton &amp; Hall · p. 12</small></button></aside>
+        <section className="note-editor"><div className="editor-toolbar"><span>↶ &nbsp; ↷</span><span>Normal <b> B </b> <i>I</i> &nbsp; ⛓</span><span>Saved just now</span></div><input className="note-title" value={title} onChange={(event) => setTitle(event.target.value)} /><textarea className="note-body" value={body} onChange={(event) => setBody(event.target.value)} /><div className="note-citation"><span>↗</span><div><strong>Guyton &amp; Hall Textbook, page 11</strong><small>“During ventricular filling, the atrioventricular valves are open…”</small></div><button onClick={() => notify("The cited page will open in the reader.")}>Open source →</button></div></section>
+        <aside className="note-tools"><p className="eyebrow">Study actions</p><h2>Use this note</h2><button onClick={() => notify("A concise summary will be generated once the AI tutor is connected.")}>✦ Summarise this note</button><button onClick={() => notify("This note will become an editable card draft.")}>◇ Create flashcards</button><button onClick={() => notify("Objective coverage will be available with the course backend.")}>✓ Check objective coverage</button><hr /><p className="eyebrow">Linked sources</p><button className="linked-source" onClick={() => notify("The cited page will open in the reader.")}>Guyton &amp; Hall <span>p. 11 →</span></button></aside>
+      </div>
+      <style jsx>{`
+        .notes-workspace { min-height: 100vh; background: #f8f8f4; }.notes-header { height: 128px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 22px 58px; background: #fffefa; border-bottom: 1px solid #dde2df; }.notes-header > div { text-align: center; }.notes-header h1 { margin: 0; font: 29px Georgia, serif; font-weight: 500; letter-spacing: -.5px; }.notes-header .button { justify-self: end; }
+        .notes-layout { height: calc(100vh - 128px); display: grid; grid-template-columns: 240px minmax(360px, 1fr) 250px; }.notes-list { padding: 24px 16px; border-right: 1px solid #dde2df; background: #f4f6f2; }.notes-search { display: flex; align-items: center; gap: 6px; background: white; border: 1px solid #dce2dc; border-radius: 6px; padding: 7px 9px; color: #7b8981; margin-bottom: 22px; }.notes-search input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; font-size: 12px; }.saved-note { width: 100%; display: grid; gap: 4px; border: 0; border-radius: 7px; padding: 11px; background: transparent; text-align: left; color: #3e4c4c; }.saved-note:hover { background: #e7ece8; }.saved-note.active { background: #dceadf; }.saved-note strong { font-size: 12px; }.saved-note small { color: #718078; font-size: 10px; }.note-editor { padding: 24px clamp(28px, 5vw, 70px); overflow: auto; background: #fffefa; }.editor-toolbar { display: flex; justify-content: space-between; color: #78857f; font-size: 11px; padding-bottom: 18px; border-bottom: 1px solid #e8ebe7; }.editor-toolbar b { color: #425652; }.note-title { width: 100%; border: 0; outline: 0; padding: 30px 0 12px; color: #253233; background: transparent; font: 33px Georgia, serif; letter-spacing: -.8px; }.note-body { width: 100%; min-height: 250px; resize: vertical; border: 0; outline: 0; padding: 8px 0; color: #475657; background: transparent; font: 16px/1.75 Georgia, serif; }.note-citation { display: flex; gap: 11px; align-items: center; margin-top: 23px; padding: 13px; background: #f1f7f2; border-left: 3px solid #99bca4; border-radius: 0 7px 7px 0; }.note-citation > span { color: #42795e; }.note-citation strong, .note-citation small { display: block; }.note-citation strong { font-size: 11px; }.note-citation small { margin-top: 4px; color: #667570; font-size: 10px; }.note-citation button { margin-left: auto; border: 0; background: transparent; color: #3e786b; white-space: nowrap; font-size: 10px; font-weight: 700; }.note-tools { padding: 27px 18px; border-left: 1px solid #dde2df; background: #f7f8f5; }.note-tools h2 { margin: 0 0 15px; font: 20px Georgia, serif; font-weight: 500; }.note-tools > button { width: 100%; margin: 6px 0; border: 1px solid #dbe2dc; border-radius: 7px; padding: 10px; background: white; color: #46645d; text-align: left; font-size: 11px; font-weight: 700; }.note-tools > button:hover { border-color: #a9c4b0; }.note-tools hr { margin: 25px 0; border: 0; border-top: 1px solid #dde2df; }.linked-source { width: 100%; display: flex; justify-content: space-between; border: 0; padding: 0; color: #45786c; background: transparent; font-size: 11px; font-weight: 700; }
+        @media (max-width: 950px) { .notes-header { padding: 22px 30px; }.notes-layout { grid-template-columns: 200px minmax(300px, 1fr); }.note-tools { display: none; } } @media (max-width: 700px) { .notes-header { height: auto; min-height: 82px; grid-template-columns: 1fr auto; padding: 20px; }.notes-header > div { display: none; }.notes-header .button { font-size: 11px; padding: 9px 11px; }.notes-layout { height: calc(100vh - 82px); grid-template-columns: 1fr; }.notes-list { display: none; }.note-editor { padding: 22px; } }
+      `}</style>
     </div>
   );
 }
@@ -256,7 +281,7 @@ function TopicModal({ onClose, notify }: { onClose: () => void; notify: (message
   );
 }
 
-function Reader({ onBack, onOpenCards, notify }: { onBack: () => void; onOpenCards: () => void; notify: (message: string) => void }) {
+function Reader({ onBack, onOpenCards, onOpenNotes, notify }: { onBack: () => void; onOpenCards: () => void; onOpenNotes: () => void; notify: (message: string) => void }) {
   const [scope, setScope] = useState("Selected text · p. 12");
   const [question, setQuestion] = useState("");
   const [answered, setAnswered] = useState(true);
@@ -294,7 +319,7 @@ function Reader({ onBack, onOpenCards, notify }: { onBack: () => void; onOpenCar
             <p>At the end of systole, the ventricles begin to relax. The fall in ventricular pressure closes the aortic valve and begins the period of isovolumetric relaxation.</p>
             <div className="paper-footer">12</div>
           </div>
-          <div className="selection-toolbar"><button onClick={() => setScope("Selected text · p. 12")}>✦ Ask</button><button onClick={() => notify("This passage was saved as a new note.")}>↗ Save note</button><button onClick={onOpenCards}>◇ Create cards</button></div>
+          <div className="selection-toolbar"><button onClick={() => setScope("Selected text · p. 12")}>✦ Ask</button><button onClick={onOpenNotes}>↗ Save note</button><button onClick={onOpenCards}>◇ Create cards</button></div>
         </section>
 
         <aside className="tutor-panel">
@@ -302,7 +327,7 @@ function Reader({ onBack, onOpenCards, notify }: { onBack: () => void; onOpenCar
           <label className="scope-label">Scope<select value={scope} onChange={(event) => setScope(event.target.value)}><option>Selected text · p. 12</option><option>Pages 12–14</option><option>This source</option><option>Topic sources</option></select></label>
           <div className="chat-thread">
             <div className="student-message">Why does ventricular pressure rise before ventricular volume changes?</div>
-            {answered && <div className="assistant-message"><span className="source-pill">From your sources</span><p>At the start of ventricular systole, both the atrioventricular and aortic valves are closed. The ventricle contracts against this closed chamber, so its pressure rises without blood entering or leaving it. This is <strong>isovolumetric contraction</strong>.</p><div className="citations"><button onClick={() => notify("Opened supporting passage on page 12.")}>Guyton &amp; Hall, p. 12 ↗</button></div><div className="message-actions"><button onClick={() => notify("Answer saved to a new linked note.")}>↗ Save note</button><button onClick={onOpenCards}>◇ Create cards</button></div></div>}
+            {answered && <div className="assistant-message"><span className="source-pill">From your sources</span><p>At the start of ventricular systole, both the atrioventricular and aortic valves are closed. The ventricle contracts against this closed chamber, so its pressure rises without blood entering or leaving it. This is <strong>isovolumetric contraction</strong>.</p><div className="citations"><button onClick={() => notify("Opened supporting passage on page 12.")}>Guyton &amp; Hall, p. 12 ↗</button></div><div className="message-actions"><button onClick={onOpenNotes}>↗ Save note</button><button onClick={onOpenCards}>◇ Create cards</button></div></div>}
           </div>
           <form className="chat-compose" onSubmit={sendQuestion}><input value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask about this…" aria-label="Ask about this source" /><button type="submit" aria-label="Send question">↑</button></form>
           <p className="education-note">For study only. Do not include patient-identifiable information.</p>
