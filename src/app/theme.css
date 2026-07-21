@@ -1,0 +1,149 @@
+button, input, textarea, select {
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(73, 121, 112, .32);
+  outline-offset: 2px;
+}
+
+button:not(:disabled):active { transform: translateY(1px); }
+
+.theme-toggle {
+  width: calc(100% - 16px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: auto 8px 12px;
+  padding: 8px 9px;
+  border: 1px solid #d9dfda;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .48);
+  color: #52625f;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.theme-toggle:hover { border-color: #acc4b5; background: #fbfdf9; }
+.theme-toggle-icon { width: 17px; text-align: center; color: #507d70; font-size: 15px; }
+.theme-switch { width: 25px; height: 15px; margin-left: auto; padding: 2px; border-radius: 99px; background: #cbd5ce; }
+.theme-switch i { display: block; width: 11px; height: 11px; border-radius: 50%; background: white; box-shadow: 0 1px 2px rgba(24, 40, 33, .2); transition: transform 160ms ease; }
+.theme-switch.enabled { background: #5a8c72; }.theme-switch.enabled i { transform: translateX(10px); }
+
+.dark-mode {
+  --ink: #e8eeea;
+  --muted: #9eada6;
+  --line: #34433e;
+  --canvas: #161d1b;
+  --paper: #202925;
+  --navy: #dfeae4;
+  --sage: #203a30;
+  --teal: #7fb49a;
+  --gold: #d8aa59;
+  --rose: #e17d7d;
+  color-scheme: dark;
+  background: #161d1b;
+}
+
+.dark-mode .sidebar,
+.dark-mode .reader-index,
+.dark-mode .notes-list,
+.dark-mode .note-tools { background: #19211f; border-color: #33413c; }
+.dark-mode .content-area,
+.dark-mode .student-home,
+.dark-mode .library-page,
+.dark-mode .page,
+.dark-mode .notes-workspace { background: #161d1b; }
+.dark-mode .sidebar,
+.dark-mode .content-area,
+.dark-mode .notes-workspace,
+.dark-mode .reader-page { color: #e8eeea; }
+.dark-mode .brand-mark { color: #17231f; background: #9bc8ae; }
+.dark-mode .nav-item,
+.dark-mode .topic-item,
+.dark-mode .course-switcher,
+.dark-mode .profile-button { color: #aebbb5; }
+.dark-mode .nav-item:hover,
+.dark-mode .topic-item:hover { background: #25322d; }
+.dark-mode .nav-item.active,
+.dark-mode .topic-item.active { color: #b9e0c6; background: #254436; }
+.dark-mode .theme-toggle { color: #c8d5ce; background: #202a27; border-color: #3a4b45; }
+.dark-mode .theme-toggle:hover { background: #293630; border-color: #5d8573; }
+.dark-mode .theme-toggle-icon { color: #f0c36f; }
+.dark-mode .sidebar-footer,
+.dark-mode .sidebar-section { border-color: #33413c; }
+
+.dark-mode :is(h1, h2, h3, strong) { color: #e8eeea; }
+.dark-mode .eyebrow { color: #98aba1; }
+.dark-mode :is(.breadcrumb, .objective, .home-header > div > p:not(.eyebrow), .library-header p:not(.eyebrow), .source-info small, .note-row small, .activity-row small, .source-list small, .featured-copy > p, .home-library p:not(.eyebrow)) { color: #9eada6; }
+.dark-mode .panel,
+.dark-mode .source-card,
+.dark-mode .upload-source,
+.dark-mode .activity-row,
+.dark-mode .continue-study,
+.dark-mode .topic-card,
+.dark-mode .featured-source,
+.dark-mode .source-list button,
+.dark-mode .review-panel,
+.dark-mode .source-panel,
+.dark-mode .note-editor { background: #202925; border-color: #36463f; }
+.dark-mode .source-card:hover,
+.dark-mode .activity-row:hover,
+.dark-mode .continue-study:hover,
+.dark-mode .topic-card:hover,
+.dark-mode .featured-source:hover,
+.dark-mode .source-list button:hover { border-color: #69977f; }
+.dark-mode .continue-panel { background: #20392f; border-color: #3d5c4c; }
+.dark-mode .continue-panel h2,
+.dark-mode .continue-copy p:not(.eyebrow),
+.dark-mode .hero-course h2,
+.dark-mode .hero-progress strong,
+.dark-mode .hero-course p:not(.eyebrow) { color: #e0eee4; }
+.dark-mode .mini-page { background: #29332f; border-color: #445149; box-shadow: -7px 10px 20px rgba(0, 0, 0, .25); }
+.dark-mode .mini-page i { background: #61726b; }.dark-mode .mini-page .highlight-line { background: #477b5a; }
+.dark-mode .cards-orb { color: #efba62; background: #3f3421; }
+.dark-mode .home-hero { background: #20372d; border-color: #3c5b4a; }
+.dark-mode .hero-course { border-color: #3c5b4a; }
+.dark-mode .hero-course button,
+.dark-mode .text-button,
+.dark-mode .open-source,
+.dark-mode .source-open { color: #89cbae; }
+.dark-mode .progress-bar { background: #385443; }.dark-mode .progress-bar i { background: #77af8d; }
+.dark-mode .topic-status { color: #a9d9b5; background: #294936; }.dark-mode .topic-status.muted { color: #a4afa9; background: #303c36; }
+.dark-mode .home-insight { background: #203034; }.dark-mode .home-library { background: #382f21; color: #ead8b5; }.dark-mode .home-library h2 { color: #ead8b5; }.dark-mode .home-library p:not(.eyebrow) { color: #c6b48e; }
+
+.dark-mode .library-search,
+.dark-mode .notes-search,
+.dark-mode .chat-compose { background: #202925; border-color: #3c4e46; }
+.dark-mode .library-search input,
+.dark-mode .notes-search input,
+.dark-mode .chat-compose input { color: #e8eeea; }
+.dark-mode .filter { color: #a6b5ad; border-color: #3d4c46; }.dark-mode .filter.active { color: #a9ddba; background: #274334; border-color: #4c705c; }
+.dark-mode .private-pill { color: #a5dfb5; background: #294a37; }.dark-mode .topic-link { color: #a7d9b6; background: #294436; }
+.dark-mode .library-notice { background: #20392d; border-color: #3c604a; }.dark-mode .library-notice p { color: #afc6b6; }
+
+.dark-mode .reader-header,
+.dark-mode .tutor-panel { background: #1c2522; border-color: #34443e; }
+.dark-mode .reader-controls,
+.dark-mode .reader-controls button,
+.dark-mode .tutor-head button { color: #b3c2ba; }
+.dark-mode .document-canvas { background: #111715; }
+.dark-mode .reader-index > button { color: #abb9b3; }.dark-mode .reader-index > button.index-active { color: #b4e0bf; background: #254435; }
+.dark-mode .thumbnail { border-color: #3f4c46; filter: brightness(.75); }.dark-mode .paper { background: #fbfaf1; color: #303635; }.dark-mode .paper :is(h2, p, span, small) { color: inherit; }.dark-mode .paper-header { color: #627169; }.dark-mode .selected-passage { background: #cfe7c8; box-shadow: 0 0 0 3px #cfe7c8; }
+.dark-mode .student-message { background: #294838; color: #d9eee0; }.dark-mode .assistant-message { color: #ced9d3; }.dark-mode .source-pill { color: #a5dfb5; background: #294a37; }.dark-mode .citations button { color: #a9d9b8; background: #263b31; border-color: #3e604c; }.dark-mode .education-note { color: #85958c; }
+
+.dark-mode .notes-header { background: #1d2623; border-color: #34443e; }.dark-mode .note-editor { background: #202925; }.dark-mode .editor-toolbar { border-color: #35433e; color: #94a39a; }.dark-mode .note-title, .dark-mode .note-body { color: #e4ece6; }.dark-mode .note-citation { background: #243e30; border-color: #69977f; }.dark-mode .note-citation small { color: #a8c0b2; }.dark-mode .saved-note { color: #cad6cf; }.dark-mode .saved-note:hover { background: #293630; }.dark-mode .saved-note.active { background: #274635; }.dark-mode .note-tools > button { color: #b8d2c4; background: #24302b; border-color: #3c4b45; }
+
+.dark-mode .export-bar { background: rgba(25, 33, 30, .94); border-color: #37473f; }.dark-mode .card-field textarea { background: #18211e; border-color: #3b4c44; color: #e3ebe5; }.dark-mode .review-header { border-color: #35433e; }.dark-mode .source-panel blockquote { color: #bdc8c1; }.dark-mode .quality.good { background: #254535; color: #a9dbb8; }.dark-mode .quality.warning { background: #4a3a22; color: #e7c078; }
+.dark-mode .upload-modal,
+.dark-mode .topic-modal { background: #202925; color: #e7eee9; }.dark-mode .upload-modal h2,
+.dark-mode .topic-modal h2 { color: #e7eee9; }.dark-mode .modal-intro,
+.dark-mode .topic-modal p { color: #abb9b2; }.dark-mode .file-drop { background: #1c2722; border-color: #496452; }.dark-mode .file-drop.selected, .dark-mode .file-drop:hover { background: #243a2e; }.dark-mode .file-drop small { color: #9dadA5; }.dark-mode .topic-modal :is(input, textarea, select) { background: #18211e; border-color: #3b4c44; color: #e4ece6; }.dark-mode .acknowledgement { color: #b3c2bb; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
