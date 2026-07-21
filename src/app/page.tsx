@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-type View = "dashboard" | "reader" | "notes" | "cards";
+type View = "home" | "dashboard" | "reader" | "notes" | "cards";
 
 const cards = [
   {
@@ -36,7 +36,7 @@ function Icon({ children }: { children: React.ReactNode }) {
 }
 
 export default function Home() {
-  const [view, setView] = useState<View>("dashboard");
+  const [view, setView] = useState<View>("home");
   const [toast, setToast] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
@@ -51,7 +51,7 @@ export default function Home() {
       <aside className="sidebar">
         <Brand />
         <nav className="primary-nav" aria-label="Primary navigation">
-          <button className={view === "dashboard" ? "nav-item active" : "nav-item"} onClick={() => setView("dashboard")}>
+          <button className={view === "home" ? "nav-item active" : "nav-item"} onClick={() => setView("home")}>
             <Icon>⌂</Icon> Home
           </button>
           <button className="nav-item" onClick={() => notify("Your library will appear here once sources are uploaded.")}>
@@ -76,7 +76,7 @@ export default function Home() {
 
         <div className="topic-list">
           <p className="eyebrow">Topics</p>
-          <button className="topic-item active" onClick={() => setView("dashboard")}>Cardiac cycle</button>
+          <button className={view === "dashboard" ? "topic-item active" : "topic-item"} onClick={() => setView("dashboard")}>Cardiac cycle</button>
           <button className="topic-item" onClick={() => notify("This is a static prototype; only Cardiac cycle is available.")}>Cardiac output</button>
           <button className="topic-item" onClick={() => notify("This is a static prototype; only Cardiac cycle is available.")}>ECG fundamentals</button>
           <button className="subtle-button add-topic" onClick={() => setTopicOpen(true)}>+ New topic</button>
@@ -92,6 +92,7 @@ export default function Home() {
       </aside>
 
       <section className="content-area">
+        {view === "home" && <StudentHome onOpenTopic={() => setView("dashboard")} onOpenReader={() => setView("reader")} onOpenTopicModal={() => setTopicOpen(true)} />}
         {view === "dashboard" && <Dashboard onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
         {view === "reader" && <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />}
         {view === "notes" && <Notes onBack={() => setView("dashboard")} notify={notify} />}
@@ -102,6 +103,35 @@ export default function Home() {
       {topicOpen && <TopicModal onClose={() => setTopicOpen(false)} notify={notify} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
+  );
+}
+
+function StudentHome({ onOpenTopic, onOpenReader, onOpenTopicModal }: { onOpenTopic: () => void; onOpenReader: () => void; onOpenTopicModal: () => void }) {
+  return (
+    <div className="student-home">
+      <header className="home-header">
+        <div><p className="eyebrow">Monday, 21 July</p><h1>Good morning, Ryan.</h1><p>Here’s a calm way back into your cardiovascular study.</p></div>
+        <button className="button primary" onClick={onOpenTopicModal}>+ New topic</button>
+      </header>
+
+      <section className="home-hero">
+        <div className="hero-course"><span className="hero-course-dot" /><div><p className="eyebrow">Your current course</p><h2>Graduate Entry Medicine</h2><p>Cardiovascular system · 3 active topics</p></div><button onClick={onOpenTopic}>Open course →</button></div>
+        <div className="hero-progress"><span>Current focus</span><strong>Cardiac cycle</strong><div className="progress-bar"><i /></div><small>2 notes · 6 draft cards · last studied yesterday</small></div>
+      </section>
+
+      <section className="home-section continue-section"><div className="section-heading"><div><p className="eyebrow">Continue studying</p><h2>One useful next step</h2></div><button className="text-button" onClick={onOpenTopic}>View topic</button></div><button className="continue-study" onClick={onOpenReader}><span className="continue-number">12</span><div><strong>Pressure changes during the cardiac cycle</strong><small>Guyton &amp; Hall Textbook · Chapter 9</small></div><span className="continue-tag">Resume reading</span><span className="activity-arrow">→</span></button></section>
+
+      <section className="home-section"><div className="section-heading"><div><p className="eyebrow">Your topics</p><h2>Keep your work in context</h2></div><button className="text-button" onClick={onOpenTopicModal}>+ Add topic</button></div><div className="topic-cards">
+        <button className="topic-card active" onClick={onOpenTopic}><span className="topic-status">In progress</span><h3>Cardiac cycle</h3><p>2 sources · 2 notes · 6 cards</p><div className="topic-card-footer"><span>Last opened yesterday</span><strong>Open →</strong></div></button>
+        <button className="topic-card" onClick={onOpenTopic}><span className="topic-status muted">Ready to start</span><h3>Cardiac output</h3><p>1 source · no notes yet</p><div className="topic-card-footer"><span>Add your first note</span><strong>Open →</strong></div></button>
+        <button className="topic-card" onClick={onOpenTopic}><span className="topic-status muted">Ready to start</span><h3>ECG fundamentals</h3><p>2 sources · 3 draft cards</p><div className="topic-card-footer"><span>Last opened 4 days ago</span><strong>Open →</strong></div></button>
+      </div></section>
+
+      <section className="home-bottom-grid"><article className="home-insight"><p className="eyebrow">Study insight</p><h2>Your strongest source of progress is keeping cards small and sourced.</h2><p>You have six draft cards waiting for review. Take two minutes to keep the useful ones and remove the rest.</p><button className="text-button">Review cards →</button></article><article className="home-library"><div><p className="eyebrow">Your library</p><h2>3 private sources</h2><p>Textbooks and lecture PDFs stay linked to the topics where you study them.</p></div><span className="library-stack"><i /><i /><i /></span></article></section>
+      <style jsx>{`
+        .student-home { max-width: 1180px; margin: 0 auto; padding: 55px 58px 90px; }.home-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 33px; }.home-header h1 { margin: 0 0 8px; color: #1b2428; font: 45px Georgia, serif; font-weight: 500; letter-spacing: -1.6px; }.home-header > div > p:not(.eyebrow) { margin: 0; color: #66747a; font-size: 14px; }.home-hero { display: grid; grid-template-columns: 1.2fr .8fr; border: 1px solid #d4e1d6; border-radius: 13px; overflow: hidden; background: #e4eee6; }.hero-course { display: flex; align-items: center; gap: 13px; padding: 27px; border-right: 1px solid #d1ded3; }.hero-course-dot { width: 12px; height: 12px; border-radius: 50%; background: #c99841; box-shadow: 0 0 0 5px rgba(201,152,65,.14); }.hero-course h2, .hero-progress strong { margin: 0; color: #263d37; font: 25px Georgia, serif; font-weight: 500; letter-spacing: -.4px; }.hero-course p:not(.eyebrow) { margin: 5px 0 0; color: #5d7169; font-size: 12px; }.hero-course button { margin-left: auto; border: 0; background: transparent; color: #397369; font-size: 12px; font-weight: 700; white-space: nowrap; }.hero-progress { padding: 23px 27px; }.hero-progress > span { display: block; margin-bottom: 5px; color: #61766d; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }.hero-progress small { color: #62766e; font-size: 10px; }.progress-bar { height: 5px; margin: 14px 0 7px; overflow: hidden; border-radius: 10px; background: #c7d8c9; }.progress-bar i { display: block; width: 63%; height: 100%; border-radius: inherit; background: #5e9074; }.home-section { margin-top: 39px; }.section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 13px; }.section-heading h2 { margin: 0; font: 22px Georgia, serif; font-weight: 500; }.continue-study { width: 100%; display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px solid #dde3de; border-radius: 10px; background: #fffefa; text-align: left; }.continue-study:hover { border-color: #abc8b3; }.continue-number { display: grid; place-items: center; width: 39px; height: 49px; color: #4f6d62; background: #eef3ed; border-radius: 5px; font: 15px Georgia, serif; }.continue-study strong, .continue-study small { display: block; }.continue-study strong { font-size: 13px; }.continue-study small { margin-top: 4px; color: #6c7a76; font-size: 11px; }.continue-tag { margin-left: auto; color: #467b69; background: #e9f3ea; border-radius: 99px; padding: 5px 8px; font-size: 10px; font-weight: 700; }.activity-arrow { margin-left: 3px; color: #3d786c; }.topic-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }.topic-card { min-height: 180px; display: flex; flex-direction: column; align-items: flex-start; padding: 19px; border: 1px solid #dfe4df; border-radius: 10px; background: #fffefa; text-align: left; color: #263334; }.topic-card:hover, .topic-card.active { border-color: #a8c8b1; box-shadow: 0 7px 22px rgba(42,70,57,.06); }.topic-status { color: #39775e; background: #e5f1e7; border-radius: 99px; padding: 4px 7px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }.topic-status.muted { color: #78847d; background: #f0f2ee; }.topic-card h3 { margin: 17px 0 7px; font: 21px Georgia, serif; font-weight: 500; }.topic-card p { margin: 0; color: #718078; font-size: 11px; }.topic-card-footer { width: 100%; margin-top: auto; display: flex; justify-content: space-between; color: #87928c; font-size: 10px; }.topic-card-footer strong { color: #3f776a; }.home-bottom-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; margin-top: 38px; }.home-insight, .home-library { min-height: 185px; padding: 23px; border-radius: 11px; }.home-insight { color: #f4f6f2; background: #263b3d; }.home-insight .eyebrow { color: #a7c1b5; }.home-insight h2 { max-width: 460px; margin: 0; font: 22px/1.2 Georgia, serif; font-weight: 500; }.home-insight p:not(.eyebrow) { margin: 11px 0; color: #ced8d4; font-size: 12px; line-height: 1.5; }.home-insight .text-button { color: #a8d5bd; }.home-library { display: flex; justify-content: space-between; background: #f0e9db; color: #625235; }.home-library h2 { margin: 0; font: 23px Georgia, serif; font-weight: 500; }.home-library p:not(.eyebrow) { max-width: 220px; color: #75664d; font-size: 12px; line-height: 1.5; }.library-stack { position: relative; display: block; width: 62px; height: 88px; margin: 14px 8px 0; }.library-stack i { position: absolute; width: 43px; height: 64px; border: 1px solid rgba(91,75,44,.2); border-radius: 4px 6px 6px 4px; background: #d0b987; }.library-stack i:nth-child(1) { top: 10px; left: 15px; background: #b78c51; }.library-stack i:nth-child(2) { top: 5px; left: 8px; background: #d3c4a2; }.library-stack i:nth-child(3) { top: 0; left: 0; background: #6d8f83; } @media (max-width: 850px) { .student-home { padding: 40px 32px 80px; }.home-hero, .home-bottom-grid { grid-template-columns: 1fr; }.hero-course { border-right: 0; border-bottom: 1px solid #d1ded3; }.topic-cards { grid-template-columns: 1fr; }.topic-card { min-height: 140px; } } @media (max-width: 600px) { .student-home { padding: 30px 18px 70px; }.home-header { display: grid; }.home-header h1 { font-size: 36px; }.home-header .button { justify-self: start; }.continue-study { align-items: flex-start; }.continue-tag { display: none; } }
+      `}</style>
+    </div>
   );
 }
 
