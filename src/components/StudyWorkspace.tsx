@@ -49,6 +49,11 @@ export function StudyWorkspace({ email, initialDocuments }: StudyWorkspaceProps)
     setView("reader");
   };
 
+  const handleDocumentUpdated = (updatedDocument: StudyDocument) => {
+    setDocuments((currentDocuments) => currentDocuments.map((document) => document.id === updatedDocument.id ? updatedDocument : document));
+    setSelectedDocument(updatedDocument);
+  };
+
   return (
     <main className="app-shell">
       <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} notify={notify} email={email} onSignOut={signOut} />
@@ -56,7 +61,7 @@ export function StudyWorkspace({ email, initialDocuments }: StudyWorkspaceProps)
         {view === "home" && <StudentHome onOpenTopic={() => setView("dashboard")} onOpenReader={() => setView("reader")} onOpenLibrary={() => setView("library")} onOpenTopicModal={() => setTopicOpen(true)} />}
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
         {view === "dashboard" && <Dashboard onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
-        {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} /> : <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />)}
+        {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} /> : <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />)}
         {view === "notes" && <Notes onBack={() => setView("dashboard")} notify={notify} />}
         {view === "cards" && <Cards onBack={() => setView("dashboard")} notify={notify} />}
       </section>
