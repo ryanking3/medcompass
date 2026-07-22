@@ -1,9 +1,16 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { WorkerMessageHandler } from "pdfjs-dist/legacy/build/pdf.worker.mjs";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+// Run the PDF.js worker handler in-process. This avoids a dynamic worker-file
+// import, which development bundlers do not preserve beside their server chunk.
+(globalThis as typeof globalThis & { pdfjsWorker?: { WorkerMessageHandler: typeof WorkerMessageHandler } }).pdfjsWorker = {
+  WorkerMessageHandler,
+};
 
 function serializeDocument(document: {
   id: string;
