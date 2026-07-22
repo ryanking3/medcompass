@@ -48,7 +48,8 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
     setIsPreparing(false);
 
     if (!response.ok) {
-      setPreparationError(result.error ?? "We couldn’t prepare this source.");
+      const diagnostic = result.details ? ` (${result.stage}: ${result.details})` : "";
+      setPreparationError(`${result.error ?? "We couldn’t prepare this source."}${diagnostic}`);
       return;
     }
 

@@ -59,6 +59,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ do
     return NextResponse.json({ error: "We couldn’t start preparing this source." }, { status: 500 });
   }
 
+  let stage = "download";
+
   try {
     const { data: sourceFile, error: downloadError } = await supabase.storage
       .from("study-sources")
@@ -68,6 +70,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ do
       throw new Error("The original PDF could not be downloaded.");
     }
 
+    stage = "parse";
     const pdf = await getDocument({
       data: new Uint8Array(await sourceFile.arrayBuffer()),
       useWorkerFetch: false,
@@ -92,6 +95,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ do
       });
     }
 
+    stage = "replace-pages";
     const { error: deletePagesError } = await supabase
       .from("document_pages")
       .delete()
@@ -101,6 +105,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ do
       throw new Error("Existing page data could not be replaced.");
     }
 
+    stage = "save-pages";
     for (let index = 0; index < pages.length; index += 25) {
       const { error: insertPagesError } = await supabase
         .from("document_pages")
@@ -111,6 +116,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ do
       }
     }
 
+    stage = "finalize";
     const { data: preparedDocument, error: updateError } = await supabase
       .from("documents")
       .update({ status: "ready", page_count: pdf.numPages, failure_reason: null })
@@ -123,7 +129,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ do
     }
 
     return NextResponse.json({ document: serializeDocument(preparedDocument) });
-  } catch {
+  } catch (error) {
+    console.error("PDF extraction failed", {
+      documentId: document.id,
+      stage,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await supabase
       .from("documents")
       .update({
@@ -132,6 +143,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ do
       })
       .eq("id", document.id);
 
-    return NextResponse.json({ error: "We couldn’t extract text from this PDF. Try again or use a text-based PDF." }, { status: 422 });
+    const message = stage === "parse"
+      ? "We couldn’t read this PDF’s pages. It may be password-protected or malformed."
+      : "We couldn’t extract text from this PDF. Please try again.";
+    return NextResponse.json({
+      error: message,
+      stage,
+      details: process.env.NODE_ENV === "development" && error instanceof Error ? error.message : undefined,
+    }, { status: 422 });
   }
 }
