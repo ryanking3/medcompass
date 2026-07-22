@@ -2,20 +2,23 @@
 
 import { useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { DocumentLibrary } from "@/components/DocumentLibrary";
 import { TopicModal, UploadModal } from "@/components/modals";
-import { Cards, Dashboard, Library, Notes, Reader, StudentHome } from "@/components/screens";
-import type { AppView } from "@/components/types";
+import { Cards, Dashboard, Notes, Reader, StudentHome } from "@/components/screens";
+import type { AppView, StudyDocument } from "@/components/types";
 import { createClient } from "@/lib/supabase/client";
 
 type StudyWorkspaceProps = {
   email: string;
+  initialDocuments: StudyDocument[];
 };
 
-export function StudyWorkspace({ email }: StudyWorkspaceProps) {
+export function StudyWorkspace({ email, initialDocuments }: StudyWorkspaceProps) {
   const [view, setView] = useState<AppView>("home");
   const [toast, setToast] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
+  const [documents, setDocuments] = useState(initialDocuments);
 
   const notify = (message: string) => {
     setToast(message);
@@ -34,18 +37,23 @@ export function StudyWorkspace({ email }: StudyWorkspaceProps) {
     window.location.assign("/");
   };
 
+  const handleDocumentUploaded = (document: StudyDocument) => {
+    setDocuments((currentDocuments) => [document, ...currentDocuments]);
+    setView("library");
+  };
+
   return (
     <main className="app-shell">
       <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} notify={notify} email={email} onSignOut={signOut} />
       <section className="content-area">
         {view === "home" && <StudentHome onOpenTopic={() => setView("dashboard")} onOpenReader={() => setView("reader")} onOpenLibrary={() => setView("library")} onOpenTopicModal={() => setTopicOpen(true)} />}
-        {view === "library" && <Library onOpenReader={() => setView("reader")} onOpenUpload={() => setUploadOpen(true)} />}
+        {view === "library" && <DocumentLibrary documents={documents} notify={notify} onOpenUpload={() => setUploadOpen(true)} />}
         {view === "dashboard" && <Dashboard onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
         {view === "reader" && <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />}
         {view === "notes" && <Notes onBack={() => setView("dashboard")} notify={notify} />}
         {view === "cards" && <Cards onBack={() => setView("dashboard")} notify={notify} />}
       </section>
-      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} />}
+      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} onUploadComplete={handleDocumentUploaded} />}
       {topicOpen && <TopicModal onClose={() => setTopicOpen(false)} notify={notify} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>
