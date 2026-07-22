@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { DocumentLibrary } from "@/components/DocumentLibrary";
+import { DocumentReader } from "@/components/DocumentReader";
 import { TopicModal, UploadModal } from "@/components/modals";
 import { Cards, Dashboard, Notes, Reader, StudentHome } from "@/components/screens";
 import type { AppView, StudyDocument } from "@/components/types";
@@ -19,6 +20,7 @@ export function StudyWorkspace({ email, initialDocuments }: StudyWorkspaceProps)
   const [uploadOpen, setUploadOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
   const [documents, setDocuments] = useState(initialDocuments);
+  const [selectedDocument, setSelectedDocument] = useState<StudyDocument | null>(null);
 
   const notify = (message: string) => {
     setToast(message);
@@ -42,14 +44,19 @@ export function StudyWorkspace({ email, initialDocuments }: StudyWorkspaceProps)
     setView("library");
   };
 
+  const openDocument = (document: StudyDocument) => {
+    setSelectedDocument(document);
+    setView("reader");
+  };
+
   return (
     <main className="app-shell">
       <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} notify={notify} email={email} onSignOut={signOut} />
       <section className="content-area">
         {view === "home" && <StudentHome onOpenTopic={() => setView("dashboard")} onOpenReader={() => setView("reader")} onOpenLibrary={() => setView("library")} onOpenTopicModal={() => setTopicOpen(true)} />}
-        {view === "library" && <DocumentLibrary documents={documents} notify={notify} onOpenUpload={() => setUploadOpen(true)} />}
+        {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
         {view === "dashboard" && <Dashboard onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
-        {view === "reader" && <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />}
+        {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} /> : <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />)}
         {view === "notes" && <Notes onBack={() => setView("dashboard")} notify={notify} />}
         {view === "cards" && <Cards onBack={() => setView("dashboard")} notify={notify} />}
       </section>

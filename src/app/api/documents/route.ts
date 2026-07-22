@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       storage_path: storagePath,
       metadata: fileSize ? { file_size_bytes: fileSize } : {},
     })
-    .select("id, title, original_filename, kind, status, page_count, created_at")
+    .select("id, title, original_filename, storage_path, kind, status, page_count, created_at")
     .single();
 
   if (documentError || !document) {
@@ -74,6 +74,7 @@ export async function POST(request: Request) {
       id: document.id,
       title: document.title,
       originalFilename: document.original_filename,
+      storagePath: document.storage_path,
       kind: document.kind,
       status: document.status,
       pageCount: document.page_count,

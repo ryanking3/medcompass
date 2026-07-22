@@ -13,13 +13,14 @@ export default async function Home() {
 
   const { data: documentRows } = await supabase
     .from("documents")
-    .select("id, title, original_filename, kind, status, page_count, created_at")
+    .select("id, title, original_filename, storage_path, kind, status, page_count, created_at")
     .order("created_at", { ascending: false });
 
   const documents: StudyDocument[] = (documentRows ?? []).map((document) => ({
     id: document.id,
     title: document.title,
     originalFilename: document.original_filename,
+    storagePath: document.storage_path,
     kind: document.kind,
     status: document.status,
     pageCount: document.page_count,

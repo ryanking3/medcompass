@@ -9,6 +9,7 @@ export type StudyDocument = {
   id: string;
   title: string;
   originalFilename: string;
+  storagePath: string;
   kind: DocumentKind;
   status: DocumentStatus;
   pageCount: number | null;

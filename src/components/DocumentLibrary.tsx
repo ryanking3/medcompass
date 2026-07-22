@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { DocumentKind, Notify, StudyDocument } from "@/components/types";
+import type { DocumentKind, StudyDocument } from "@/components/types";
 
 type DocumentLibraryProps = {
   documents: StudyDocument[];
-  notify: Notify;
+  onOpenDocument: (document: StudyDocument) => void;
   onOpenUpload: () => void;
 };
 
@@ -22,7 +22,7 @@ const statusLabels: Record<StudyDocument["status"], string> = {
   failed: "Needs attention",
 };
 
-export function DocumentLibrary({ documents, notify, onOpenUpload }: DocumentLibraryProps) {
+export function DocumentLibrary({ documents, onOpenDocument, onOpenUpload }: DocumentLibraryProps) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | DocumentKind>("all");
   const filteredDocuments = useMemo(() => documents.filter((document) => {
@@ -53,11 +53,11 @@ export function DocumentLibrary({ documents, notify, onOpenUpload }: DocumentLib
         {filteredDocuments.length > 0 ? (
           <div className="source-list">
             {filteredDocuments.map((document) => (
-              <button key={document.id} onClick={() => notify("PDF reading and page extraction are the next Textbooks milestone.")}>
+              <button key={document.id} onClick={() => onOpenDocument(document)}>
                 <span className={`source-document ${document.kind}`}>{document.kind === "textbook" ? "BK" : "PDF"}</span>
                 <span><strong>{document.title}</strong><small>{kindLabels[document.kind]} · Added {new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(document.createdAt))}</small></span>
                 <span className={`document-status ${document.status}`}>{statusLabels[document.status]}</span>
-                <span className="source-open">Details →</span>
+                <span className="source-open">Open →</span>
               </button>
             ))}
           </div>
