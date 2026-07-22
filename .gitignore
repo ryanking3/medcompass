@@ -18,6 +18,7 @@ build/
 # Hosting and tooling
 .vercel/
 .turbo/
+supabase/.temp/
 
 # Logs
 *.log

@@ -214,20 +214,20 @@ on conflict (id) do nothing;
 
 create policy "users upload private study sources" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'study-sources' and owner_id = auth.uid());
+  with check (bucket_id = 'study-sources' and owner_id = auth.uid()::text);
 
 create policy "users read private study sources" on storage.objects
   for select to authenticated
-  using (bucket_id = 'study-sources' and owner_id = auth.uid());
+  using (bucket_id = 'study-sources' and owner_id = auth.uid()::text);
 
 create policy "users update private study sources" on storage.objects
   for update to authenticated
-  using (bucket_id = 'study-sources' and owner_id = auth.uid())
-  with check (bucket_id = 'study-sources' and owner_id = auth.uid());
+  using (bucket_id = 'study-sources' and owner_id = auth.uid()::text)
+  with check (bucket_id = 'study-sources' and owner_id = auth.uid()::text);
 
 create policy "users delete private study sources" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'study-sources' and owner_id = auth.uid());
+  using (bucket_id = 'study-sources' and owner_id = auth.uid()::text);
 
 create trigger profiles_set_updated_at before update on public.profiles for each row execute procedure public.set_updated_at();
 create trigger workspaces_set_updated_at before update on public.workspaces for each row execute procedure public.set_updated_at();
