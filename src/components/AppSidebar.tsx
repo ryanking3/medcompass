@@ -13,9 +13,13 @@ type AppSidebarProps = {
   onNavigate: (view: AppView) => void;
   onCreateTopic: () => void;
   notify: Notify;
+  email: string;
+  onSignOut: () => void;
 };
 
-export function AppSidebar({ view, onNavigate, onCreateTopic, notify }: AppSidebarProps) {
+export function AppSidebar({ view, onNavigate, onCreateTopic, notify, email, onSignOut }: AppSidebarProps) {
+  const initials = email.slice(0, 2).toUpperCase();
+
   return (
     <aside className="sidebar">
       <Brand />
@@ -40,7 +44,8 @@ export function AppSidebar({ view, onNavigate, onCreateTopic, notify }: AppSideb
       </div>
 
       <div className="sidebar-footer">
-        <button className="profile-button" onClick={() => notify("Account settings will be added with authentication.")}><span className="avatar">RK</span><span><strong>Ryan King</strong><small>Student workspace</small></span><span className="chevron">⋯</span></button>
+        <div className="profile-button"><span className="avatar">{initials}</span><span><strong>{email}</strong><small>Student workspace</small></span></div>
+        <button className="sign-out-button" onClick={onSignOut}>Sign out</button>
       </div>
     </aside>
   );
