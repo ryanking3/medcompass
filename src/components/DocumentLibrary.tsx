@@ -55,7 +55,7 @@ export function DocumentLibrary({ documents, onOpenDocument, onOpenUpload }: Doc
             {filteredDocuments.map((document) => (
               <button key={document.id} onClick={() => onOpenDocument(document)}>
                 <span className={`source-document ${document.kind}`}>{document.kind === "textbook" ? "BK" : "PDF"}</span>
-                <span><strong>{document.title}</strong><small>{kindLabels[document.kind]} · Added {new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(document.createdAt))}</small></span>
+                <span><strong>{document.title}</strong><small>{kindLabels[document.kind]} · Added {new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(document.createdAt))}{document.linkedTopics.length ? ` · ${document.linkedTopics.map((topic) => topic.name).join(", ")}` : " · Unlinked"}</small></span>
                 <span className={`document-status ${document.status}`}>{statusLabels[document.status]}</span>
                 <span className="source-open">Open →</span>
               </button>

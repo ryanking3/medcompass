@@ -54,8 +54,8 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses }: Stud
   };
 
   const handleDocumentUpdated = (updatedDocument: StudyDocument) => {
-    setDocuments((currentDocuments) => currentDocuments.map((document) => document.id === updatedDocument.id ? updatedDocument : document));
-    setSelectedDocument(updatedDocument);
+    setDocuments((currentDocuments) => currentDocuments.map((document) => document.id === updatedDocument.id ? { ...updatedDocument, linkedTopics: document.linkedTopics } : document));
+    setSelectedDocument((document) => document?.id === updatedDocument.id ? { ...updatedDocument, linkedTopics: document.linkedTopics } : document);
   };
 
   const selectCourse = (courseId: string) => {
@@ -106,7 +106,7 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses }: Stud
         {view === "notes" && <Notes onBack={() => setView("dashboard")} notify={notify} />}
         {view === "cards" && <Cards onBack={() => setView("dashboard")} notify={notify} />}
       </section>
-      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} onUploadComplete={handleDocumentUploaded} />}
+      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} onUploadComplete={handleDocumentUploaded} topics={courses.flatMap((course) => course.modules.flatMap((module) => module.topics))} selectedTopicId={selectedTopic?.id ?? null} />}
       {topicOpen && <TopicModal onClose={() => setTopicOpen(false)} courses={courses} selectedCourseId={selectedCourseId} onTopicCreated={handleTopicCreated} />}
       {toast && <div className="toast" role="status">{toast}</div>}
     </main>

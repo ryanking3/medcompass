@@ -15,6 +15,7 @@ export async function POST(request: Request) {
   const originalFilename = typeof body.originalFilename === "string" ? body.originalFilename.trim() : "";
   const title = typeof body.title === "string" ? body.title.trim() : "";
   const storagePath = typeof body.storagePath === "string" ? body.storagePath : "";
+  const topicId = typeof body.topicId === "string" && body.topicId ? body.topicId : null;
   const kind = documentKinds.includes(body.kind) ? body.kind : "other";
 
   if (!originalFilename || !title || !storagePath.startsWith(`${user.id}/`)) {
@@ -49,6 +50,21 @@ export async function POST(request: Request) {
     workspaceId = workspace.id;
   }
 
+  let linkedTopic: { id: string; name: string } | null = null;
+  if (topicId) {
+    const { data: topic, error: topicError } = await supabase
+      .from("topics")
+      .select("id, name")
+      .eq("id", topicId)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+
+    if (topicError || !topic) {
+      return NextResponse.json({ error: "Choose a topic in your study workspace before uploading." }, { status: 400 });
+    }
+    linkedTopic = topic;
+  }
+
   const fileSize = typeof body.fileSize === "number" && Number.isFinite(body.fileSize) ? body.fileSize : null;
   const { data: document, error: documentError } = await supabase
     .from("documents")
@@ -69,6 +85,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Your PDF uploaded, but we couldn't add it to the library. Please try again." }, { status: 500 });
   }
 
+  if (linkedTopic) {
+    const { error: documentTopicError } = await supabase
+      .from("document_topics")
+      .insert({ workspace_id: workspaceId, document_id: document.id, topic_id: linkedTopic.id });
+
+    if (documentTopicError) {
+      await supabase.from("documents").delete().eq("id", document.id);
+      return NextResponse.json({ error: "Your PDF uploaded, but we couldn't connect it to that topic. Please try again." }, { status: 500 });
+    }
+  }
+
   return NextResponse.json({
     document: {
       id: document.id,
@@ -79,6 +106,7 @@ export async function POST(request: Request) {
       status: document.status,
       pageCount: document.page_count,
       createdAt: document.created_at,
+      linkedTopics: linkedTopic ? [linkedTopic] : [],
     },
   }, { status: 201 });
 }

@@ -14,6 +14,7 @@ export type StudyDocument = {
   status: DocumentStatus;
   pageCount: number | null;
   createdAt: string;
+  linkedTopics: Array<{ id: string; name: string }>;
 };
 
 export type LearningObjective = {

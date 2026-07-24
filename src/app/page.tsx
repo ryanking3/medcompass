@@ -13,7 +13,7 @@ export default async function Home() {
 
   const { data: documentRows } = await supabase
     .from("documents")
-    .select("id, title, original_filename, storage_path, kind, status, page_count, created_at")
+    .select("id, title, original_filename, storage_path, kind, status, page_count, created_at, document_topics(topic_id, topics(id, name))")
     .order("created_at", { ascending: false });
 
   const { data: courseRows } = await supabase
@@ -30,6 +30,7 @@ export default async function Home() {
     status: document.status,
     pageCount: document.page_count,
     createdAt: document.created_at,
+    linkedTopics: (document.document_topics ?? []).flatMap((link) => (link.topics ?? []).map((topic) => ({ id: topic.id, name: topic.name }))),
   }));
 
   const courses: StudyCourse[] = (courseRows ?? []).map((course) => ({
