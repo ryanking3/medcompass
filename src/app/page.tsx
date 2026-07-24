@@ -1,6 +1,6 @@
 import { SignInForm } from "@/components/SignInForm";
 import { StudyWorkspace } from "@/components/StudyWorkspace";
-import type { StudyCourse, StudyDocument } from "@/components/types";
+import type { StudyCourse, StudyDocument, StudyNote } from "@/components/types";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
@@ -20,6 +20,11 @@ export default async function Home() {
     .from("courses")
     .select("id, name, institution, programme, academic_year, modules(id, course_id, name, sort_order, topics(id, module_id, name, description, last_studied_at, sort_order, learning_objectives(id, body, sort_order)))")
     .order("created_at", { ascending: true });
+
+  const { data: noteRows } = await supabase
+    .from("notes")
+    .select("id, topic_id, title, body, updated_at, note_citations(id, document_id, page_start, page_end, excerpt, documents(id, title))")
+    .order("updated_at", { ascending: false });
 
   const documents: StudyDocument[] = (documentRows ?? []).map((document) => ({
     id: document.id,
@@ -60,5 +65,21 @@ export default async function Home() {
       })),
   }));
 
-  return <StudyWorkspace email={user.email ?? "Signed-in student"} initialDocuments={documents} initialCourses={courses} />;
+  const notes: StudyNote[] = (noteRows ?? []).map((note) => ({
+    id: note.id,
+    topicId: note.topic_id,
+    title: note.title,
+    body: note.body,
+    updatedAt: note.updated_at,
+    citations: (note.note_citations ?? []).map((citation) => ({
+      id: citation.id,
+      documentId: citation.document_id,
+      documentTitle: citation.documents[0]?.title ?? "Source",
+      pageStart: citation.page_start,
+      pageEnd: citation.page_end,
+      excerpt: citation.excerpt,
+    })),
+  }));
+
+  return <StudyWorkspace email={user.email ?? "Signed-in student"} initialDocuments={documents} initialCourses={courses} initialNotes={notes} />;
 }

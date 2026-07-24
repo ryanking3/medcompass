@@ -52,3 +52,21 @@ export type CreatedTopic = {
   module: Omit<StudyModule, "topics">;
   topic: StudyTopic;
 };
+
+export type StudyNoteCitation = {
+  id: string;
+  documentId: string;
+  documentTitle: string;
+  pageStart: number | null;
+  pageEnd: number | null;
+  excerpt: string | null;
+};
+
+export type StudyNote = {
+  id: string;
+  topicId: string;
+  title: string;
+  body: string;
+  updatedAt: string;
+  citations: StudyNoteCitation[];
+};

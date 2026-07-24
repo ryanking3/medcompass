@@ -5,23 +5,26 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { DocumentLibrary } from "@/components/DocumentLibrary";
 import { DocumentReader } from "@/components/DocumentReader";
 import { TopicModal, UploadModal } from "@/components/modals";
-import { Cards, Dashboard, Notes, Reader, StudentHome } from "@/components/screens";
-import type { AppView, CreatedTopic, StudyCourse, StudyDocument, StudyTopic } from "@/components/types";
+import { Cards, Dashboard, Reader, StudentHome } from "@/components/screens";
+import { TopicNotes } from "@/components/TopicNotes";
+import type { AppView, CreatedTopic, StudyCourse, StudyDocument, StudyNote, StudyTopic } from "@/components/types";
 import { createClient } from "@/lib/supabase/client";
 
 type StudyWorkspaceProps = {
   email: string;
   initialDocuments: StudyDocument[];
   initialCourses: StudyCourse[];
+  initialNotes: StudyNote[];
 };
 
-export function StudyWorkspace({ email, initialDocuments, initialCourses }: StudyWorkspaceProps) {
+export function StudyWorkspace({ email, initialDocuments, initialCourses, initialNotes }: StudyWorkspaceProps) {
   const [view, setView] = useState<AppView>("home");
   const [toast, setToast] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
   const [documents, setDocuments] = useState(initialDocuments);
   const [selectedDocument, setSelectedDocument] = useState<StudyDocument | null>(null);
+  const [notes, setNotes] = useState(initialNotes);
   const [courses, setCourses] = useState(initialCourses);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(initialCourses[0]?.id ?? null);
   const [selectedTopic, setSelectedTopic] = useState<StudyTopic | null>(initialCourses[0]?.modules.flatMap((module) => module.topics)[0] ?? null);
@@ -57,6 +60,9 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses }: Stud
     setDocuments((currentDocuments) => currentDocuments.map((document) => document.id === updatedDocument.id ? { ...updatedDocument, linkedTopics: document.linkedTopics } : document));
     setSelectedDocument((document) => document?.id === updatedDocument.id ? { ...updatedDocument, linkedTopics: document.linkedTopics } : document);
   };
+
+  const handleNoteCreated = (note: StudyNote) => setNotes((currentNotes) => [note, ...currentNotes]);
+  const handleNoteUpdated = (updatedNote: StudyNote) => setNotes((currentNotes) => currentNotes.map((note) => note.id === updatedNote.id ? updatedNote : note));
 
   const selectCourse = (courseId: string) => {
     const course = courses.find((entry) => entry.id === courseId);
@@ -103,7 +109,7 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses }: Stud
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
         {view === "dashboard" && <Dashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
         {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} /> : <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />)}
-        {view === "notes" && <Notes onBack={() => setView("dashboard")} notify={notify} />}
+        {view === "notes" && <TopicNotes topic={selectedTopic} notes={notes} documents={documents} onBack={() => setView("dashboard")} onNoteCreated={handleNoteCreated} onNoteUpdated={handleNoteUpdated} />}
         {view === "cards" && <Cards onBack={() => setView("dashboard")} notify={notify} />}
       </section>
       {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} onUploadComplete={handleDocumentUploaded} topics={courses.flatMap((course) => course.modules.flatMap((module) => module.topics))} selectedTopicId={selectedTopic?.id ?? null} />}
