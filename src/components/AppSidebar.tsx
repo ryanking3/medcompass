@@ -1,4 +1,4 @@
-import type { AppView, Notify } from "./types";
+import type { AppView, StudyCourse, StudyTopic } from "./types";
 
 function Brand() {
   return <div className="brand" aria-label="MedCompass"><span className="brand-mark" aria-hidden="true">M</span><span>MedCompass</span></div>;
@@ -12,13 +12,19 @@ type AppSidebarProps = {
   view: AppView;
   onNavigate: (view: AppView) => void;
   onCreateTopic: () => void;
-  notify: Notify;
   email: string;
   onSignOut: () => void;
+  courses: StudyCourse[];
+  selectedCourseId: string | null;
+  selectedTopicId: string | null;
+  onSelectCourse: (courseId: string) => void;
+  onSelectTopic: (topic: StudyTopic) => void;
 };
 
-export function AppSidebar({ view, onNavigate, onCreateTopic, notify, email, onSignOut }: AppSidebarProps) {
+export function AppSidebar({ view, onNavigate, onCreateTopic, email, onSignOut, courses, selectedCourseId, selectedTopicId, onSelectCourse, onSelectTopic }: AppSidebarProps) {
   const initials = email.slice(0, 2).toUpperCase();
+  const selectedCourse = courses.find((course) => course.id === selectedCourseId) ?? null;
+  const topics = selectedCourse?.modules.flatMap((module) => module.topics) ?? [];
 
   return (
     <aside className="sidebar">
@@ -32,14 +38,14 @@ export function AppSidebar({ view, onNavigate, onCreateTopic, notify, email, onS
 
       <div className="sidebar-section">
         <p className="eyebrow">Current course</p>
-        <button className="course-switcher" onClick={() => notify("Course switching is part of the upcoming workspace setup.")}><span className="course-dot" /><span>Graduate Entry Medicine</span><span className="chevron">⌄</span></button>
+        {courses.length > 0 ? (
+          <label className="course-switcher"><span className="course-dot" /><select value={selectedCourse?.id ?? ""} onChange={(event) => onSelectCourse(event.target.value)} aria-label="Current course">{courses.map((course) => <option key={course.id} value={course.id}>{course.name}</option>)}</select></label>
+        ) : <button className="course-switcher" onClick={onCreateTopic}><span className="course-dot" /><span>Create your first course</span><span className="chevron">+</span></button>}
       </div>
 
       <div className="topic-list">
         <p className="eyebrow">Topics</p>
-        <button className={view === "dashboard" ? "topic-item active" : "topic-item"} onClick={() => onNavigate("dashboard")}>Cardiac cycle</button>
-        <button className="topic-item" onClick={() => notify("This is a static prototype; only Cardiac cycle is available.")}>Cardiac output</button>
-        <button className="topic-item" onClick={() => notify("This is a static prototype; only Cardiac cycle is available.")}>ECG fundamentals</button>
+        {topics.length > 0 ? topics.map((topic) => <button key={topic.id} className={view === "dashboard" && topic.id === selectedTopicId ? "topic-item active" : "topic-item"} onClick={() => onSelectTopic(topic)}>{topic.name}</button>) : <p className="empty-topics">Create a topic to organise your sources, notes, and cards.</p>}
         <button className="subtle-button add-topic" onClick={onCreateTopic}>+ New topic</button>
       </div>
 

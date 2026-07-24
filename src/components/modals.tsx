@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { DocumentKind, Notify, StudyDocument } from "./types";
+import type { CreatedTopic, DocumentKind, Notify, StudyCourse, StudyDocument } from "./types";
 
 export function UploadModal({ onClose, notify, onUploadComplete }: { onClose: () => void; notify: Notify; onUploadComplete: (document: StudyDocument) => void }) {
   const [file, setFile] = useState<File | null>(null);
@@ -79,8 +79,65 @@ export function UploadModal({ onClose, notify, onUploadComplete }: { onClose: ()
   );
 }
 
-export function TopicModal({ onClose, notify }: { onClose: () => void; notify: Notify }) {
+export function LegacyTopicModal({ onClose, notify }: { onClose: () => void; notify: Notify }) {
   const [topic, setTopic] = useState("");
   const createTopic = (event: FormEvent) => { event.preventDefault(); if (!topic.trim()) return; onClose(); notify(`${topic.trim()} was created in Graduate Entry Medicine.`); };
   return <div className="topic-backdrop" role="presentation" onMouseDown={onClose}><form className="topic-modal" role="dialog" aria-modal="true" aria-labelledby="topic-title" onSubmit={createTopic} onMouseDown={(event) => event.stopPropagation()}><button className="topic-close" type="button" onClick={onClose} aria-label="Close topic dialog">×</button><p className="eyebrow">New study topic</p><h2 id="topic-title">Create a focused place to study</h2><p>Topics keep sources, notes, tutor conversations, and cards together around one area of learning.</p><label>Course<select defaultValue="Graduate Entry Medicine"><option>Graduate Entry Medicine</option></select></label><label>Module <input defaultValue="Cardiovascular system" /></label><label>Topic <input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="e.g. Cardiac output" autoFocus /></label><label>Learning objective <textarea placeholder="e.g. Explain the factors that determine cardiac output" /></label><div className="topic-actions"><button className="button ghost" type="button" onClick={onClose}>Cancel</button><button className="button primary" disabled={!topic.trim()} type="submit">Create topic →</button></div><small>Prototype state only — topics are not persisted until the workspace backend is connected.</small><style jsx>{`.topic-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(23, 36, 35, .35); backdrop-filter: blur(4px); }.topic-modal { width: min(500px, 100%); position: relative; display: grid; gap: 13px; background: #fffefa; border-radius: 14px; padding: 34px; box-shadow: 0 24px 80px rgba(22, 40, 38, .28); }.topic-close { position: absolute; top: 17px; right: 17px; width: 31px; height: 31px; border-radius: 50%; border: 0; background: #eef1ed; color: #5a6866; font-size: 21px; line-height: 1; } h2 { max-width: 380px; margin: -2px 0 0; font: 27px/1.16 Georgia, serif; font-weight: 500; letter-spacing: -.5px; } p { margin: 0 0 5px; color: #5e6d69; font-size: 13px; line-height: 1.55; } label { display: grid; gap: 6px; color: #5e6d69; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; } input, textarea, select { width: 100%; border: 1px solid #d8ded9; border-radius: 7px; padding: 10px; color: #2b3838; background: white; font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none; outline-color: #497970; } textarea { min-height: 75px; resize: vertical; }.topic-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }.topic-modal small { color: #929b95; text-align: center; font-size: 10px; }`}</style></form></div>;
+}
+
+type TopicModalProps = {
+  onClose: () => void;
+  courses: StudyCourse[];
+  selectedCourseId: string | null;
+  onTopicCreated: (createdTopic: CreatedTopic) => void;
+};
+
+export function TopicModal({ onClose, courses, selectedCourseId, onTopicCreated }: TopicModalProps) {
+  const selectedCourse = courses.find((course) => course.id === selectedCourseId);
+  const [courseName, setCourseName] = useState(selectedCourse?.name ?? "");
+  const [moduleName, setModuleName] = useState("");
+  const [topicName, setTopicName] = useState("");
+  const [learningObjective, setLearningObjective] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const createTopic = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!courseName.trim() || !moduleName.trim() || !topicName.trim() || isSaving) return;
+
+    setIsSaving(true);
+    setErrorMessage("");
+    const response = await fetch("/api/study-structure", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseName, moduleName, topicName, learningObjective }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setIsSaving(false);
+
+    if (!response.ok) {
+      setErrorMessage(result.error ?? "We couldn't create that topic. Please try again.");
+      return;
+    }
+
+    onTopicCreated(result.createdTopic as CreatedTopic);
+  };
+
+  return <div className="topic-backdrop" role="presentation" onMouseDown={onClose}>
+    <form className="topic-modal" role="dialog" aria-modal="true" aria-labelledby="topic-title" onSubmit={createTopic} onMouseDown={(event) => event.stopPropagation()}>
+      <button className="topic-close" type="button" onClick={onClose} aria-label="Close topic dialog">×</button>
+      <p className="eyebrow">New study topic</p>
+      <h2 id="topic-title">Create a focused place to study</h2>
+      <p>Topics keep sources, notes, tutor conversations, and cards together around one area of learning.</p>
+      <label>Course<input list="course-options" value={courseName} onChange={(event) => setCourseName(event.target.value)} placeholder="e.g. Graduate Entry Medicine" autoFocus required /></label>
+      <datalist id="course-options">{courses.map((course) => <option key={course.id} value={course.name} />)}</datalist>
+      <label>Module <input value={moduleName} onChange={(event) => setModuleName(event.target.value)} placeholder="e.g. Cardiovascular system" required /></label>
+      <label>Topic <input value={topicName} onChange={(event) => setTopicName(event.target.value)} placeholder="e.g. Cardiac output" required /></label>
+      <label>Learning objective <textarea value={learningObjective} onChange={(event) => setLearningObjective(event.target.value)} placeholder="e.g. Explain the factors that determine cardiac output" /></label>
+      {errorMessage && <p className="topic-error" role="alert">{errorMessage}</p>}
+      <div className="topic-actions"><button className="button ghost" type="button" onClick={onClose}>Cancel</button><button className="button primary" disabled={!courseName.trim() || !moduleName.trim() || !topicName.trim() || isSaving} type="submit">{isSaving ? "Creating…" : "Create topic →"}</button></div>
+      <small>Everything is private to your study workspace.</small>
+      <style jsx>{`.topic-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(23, 36, 35, .35); backdrop-filter: blur(4px); }.topic-modal { width: min(500px, 100%); position: relative; display: grid; gap: 13px; background: #fffefa; border-radius: 14px; padding: 34px; box-shadow: 0 24px 80px rgba(22, 40, 38, .28); }.topic-close { position: absolute; top: 17px; right: 17px; width: 31px; height: 31px; border-radius: 50%; border: 0; background: #eef1ed; color: #5a6866; font-size: 21px; line-height: 1; } h2 { max-width: 380px; margin: -2px 0 0; font: 27px/1.16 Georgia, serif; font-weight: 500; letter-spacing: -.5px; } p { margin: 0 0 5px; color: #5e6d69; font-size: 13px; line-height: 1.55; } label { display: grid; gap: 6px; color: #5e6d69; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; } input, textarea { width: 100%; border: 1px solid #d8ded9; border-radius: 7px; padding: 10px; color: #2b3838; background: white; font-size: 13px; font-weight: 400; letter-spacing: normal; text-transform: none; outline-color: #497970; } textarea { min-height: 75px; resize: vertical; }.topic-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }.topic-modal small { color: #929b95; text-align: center; font-size: 10px; }.topic-error { margin: -3px 0 0; color: #9a4a4a; font-size: 11px; }`}</style>
+    </form>
+  </div>;
 }

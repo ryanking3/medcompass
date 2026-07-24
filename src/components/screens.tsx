@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import type { StudyCourse, StudyTopic } from "./types";
 
 const cards = [
   { front: "What event produces the first heart sound (S1)?", back: "Closure of the atrioventricular valves at the beginning of ventricular systole.", source: "Guyton & Hall, p. 12" },
@@ -53,14 +54,15 @@ export function Library({ onOpenReader, onOpenUpload }: { onOpenReader: () => vo
   );
 }
 
-export function Dashboard({ onOpenReader, onOpenCards, onOpenNotes, onOpenUpload, notify }: { onOpenReader: () => void; onOpenCards: () => void; onOpenNotes: () => void; onOpenUpload: () => void; notify: (message: string) => void }) {
+export function Dashboard({ topic, course, onOpenReader, onOpenCards, onOpenNotes, onOpenUpload, notify }: { topic: StudyTopic | null; course: StudyCourse | null; onOpenReader: () => void; onOpenCards: () => void; onOpenNotes: () => void; onOpenUpload: () => void; notify: (message: string) => void }) {
+  const learningObjective = topic?.learningObjectives[0]?.body;
   return (
     <div className="page dashboard-page">
       <header className="page-header">
         <div>
-          <p className="breadcrumb">Graduate Entry Medicine <span>/</span> Cardiovascular system</p>
-          <h1>Cardiac cycle</h1>
-          <p className="objective"><span>Learning objective</span> Explain the phases of the cardiac cycle and the pressure changes that drive them.</p>
+          <p className="breadcrumb">{course?.name ?? "Your study workspace"} <span>/</span> {topic ? "Topic" : "Start here"}</p>
+          <h1>{topic?.name ?? "Choose a topic"}</h1>
+          <p className="objective"><span>Learning objective</span> {learningObjective ?? (topic ? "Add learning objectives as you refine this topic." : "Create a topic to keep sources, notes, cards, and future tutor conversations in context.")}</p>
         </div>
         <button className="button primary" onClick={onOpenUpload}>+ Add source</button>
       </header>
