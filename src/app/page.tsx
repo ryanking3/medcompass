@@ -1,6 +1,6 @@
 import { SignInForm } from "@/components/SignInForm";
 import { StudyWorkspace } from "@/components/StudyWorkspace";
-import type { StudyCourse, StudyDocument, StudyNote } from "@/components/types";
+import type { StudyCourse, StudyDocument, StudyFlashcard, StudyNote } from "@/components/types";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
@@ -25,6 +25,10 @@ export default async function Home() {
     .from("notes")
     .select("id, topic_id, title, body, updated_at, note_citations(id, document_id, page_start, page_end, excerpt, documents(id, title))")
     .order("updated_at", { ascending: false });
+
+  const { data: deckRows } = await supabase
+    .from("flashcard_decks")
+    .select("id, topic_id, flashcards(id, deck_id, kind, front, back, is_kept, source_document_id, source_page_start, source_page_end, updated_at, documents(id, title))");
 
   const documents: StudyDocument[] = (documentRows ?? []).map((document) => ({
     id: document.id,
@@ -81,5 +85,20 @@ export default async function Home() {
     })),
   }));
 
-  return <StudyWorkspace email={user.email ?? "Signed-in student"} initialDocuments={documents} initialCourses={courses} initialNotes={notes} />;
+  const flashcards: StudyFlashcard[] = (deckRows ?? []).flatMap((deck) => (deck.flashcards ?? []).map((card) => ({
+    id: card.id,
+    deckId: card.deck_id,
+    topicId: deck.topic_id,
+    kind: card.kind,
+    front: card.front,
+    back: card.back,
+    isKept: card.is_kept,
+    sourceDocumentId: card.source_document_id,
+    sourceDocumentTitle: card.documents[0]?.title ?? null,
+    sourcePageStart: card.source_page_start,
+    sourcePageEnd: card.source_page_end,
+    updatedAt: card.updated_at,
+  })));
+
+  return <StudyWorkspace email={user.email ?? "Signed-in student"} initialDocuments={documents} initialCourses={courses} initialNotes={notes} initialFlashcards={flashcards} />;
 }

@@ -5,9 +5,10 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { DocumentLibrary } from "@/components/DocumentLibrary";
 import { DocumentReader } from "@/components/DocumentReader";
 import { TopicModal, UploadModal } from "@/components/modals";
-import { Cards, Dashboard, Reader, StudentHome } from "@/components/screens";
+import { Dashboard, Reader, StudentHome } from "@/components/screens";
+import { TopicCards } from "@/components/TopicCards";
 import { TopicNotes } from "@/components/TopicNotes";
-import type { AppView, CreatedTopic, StudyCourse, StudyDocument, StudyNote, StudyTopic } from "@/components/types";
+import type { AppView, CreatedTopic, StudyCourse, StudyDocument, StudyFlashcard, StudyNote, StudyTopic } from "@/components/types";
 import { createClient } from "@/lib/supabase/client";
 
 type StudyWorkspaceProps = {
@@ -15,9 +16,10 @@ type StudyWorkspaceProps = {
   initialDocuments: StudyDocument[];
   initialCourses: StudyCourse[];
   initialNotes: StudyNote[];
+  initialFlashcards: StudyFlashcard[];
 };
 
-export function StudyWorkspace({ email, initialDocuments, initialCourses, initialNotes }: StudyWorkspaceProps) {
+export function StudyWorkspace({ email, initialDocuments, initialCourses, initialNotes, initialFlashcards }: StudyWorkspaceProps) {
   const [view, setView] = useState<AppView>("home");
   const [toast, setToast] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -25,6 +27,7 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses, initia
   const [documents, setDocuments] = useState(initialDocuments);
   const [selectedDocument, setSelectedDocument] = useState<StudyDocument | null>(null);
   const [notes, setNotes] = useState(initialNotes);
+  const [flashcards, setFlashcards] = useState(initialFlashcards);
   const [courses, setCourses] = useState(initialCourses);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(initialCourses[0]?.id ?? null);
   const [selectedTopic, setSelectedTopic] = useState<StudyTopic | null>(initialCourses[0]?.modules.flatMap((module) => module.topics)[0] ?? null);
@@ -63,6 +66,9 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses, initia
 
   const handleNoteCreated = (note: StudyNote) => setNotes((currentNotes) => [note, ...currentNotes]);
   const handleNoteUpdated = (updatedNote: StudyNote) => setNotes((currentNotes) => currentNotes.map((note) => note.id === updatedNote.id ? updatedNote : note));
+  const handleCardCreated = (card: StudyFlashcard) => setFlashcards((currentCards) => [card, ...currentCards]);
+  const handleCardUpdated = (updatedCard: StudyFlashcard) => setFlashcards((currentCards) => currentCards.map((card) => card.id === updatedCard.id ? updatedCard : card));
+  const handleCardDeleted = (cardId: string) => setFlashcards((currentCards) => currentCards.filter((card) => card.id !== cardId));
 
   const selectCourse = (courseId: string) => {
     const course = courses.find((entry) => entry.id === courseId);
@@ -110,7 +116,7 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses, initia
         {view === "dashboard" && <Dashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
         {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} /> : <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />)}
         {view === "notes" && <TopicNotes topic={selectedTopic} notes={notes} documents={documents} onBack={() => setView("dashboard")} onNoteCreated={handleNoteCreated} onNoteUpdated={handleNoteUpdated} />}
-        {view === "cards" && <Cards onBack={() => setView("dashboard")} notify={notify} />}
+        {view === "cards" && <TopicCards topic={selectedTopic} cards={flashcards} documents={documents} onBack={() => setView("dashboard")} onCardCreated={handleCardCreated} onCardUpdated={handleCardUpdated} onCardDeleted={handleCardDeleted} />}
       </section>
       {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} onUploadComplete={handleDocumentUploaded} topics={courses.flatMap((course) => course.modules.flatMap((module) => module.topics))} selectedTopicId={selectedTopic?.id ?? null} />}
       {topicOpen && <TopicModal onClose={() => setTopicOpen(false)} courses={courses} selectedCourseId={selectedCourseId} onTopicCreated={handleTopicCreated} />}

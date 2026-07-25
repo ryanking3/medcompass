@@ -70,3 +70,20 @@ export type StudyNote = {
   updatedAt: string;
   citations: StudyNoteCitation[];
 };
+
+export type FlashcardKind = "basic" | "cloze";
+
+export type StudyFlashcard = {
+  id: string;
+  deckId: string;
+  topicId: string;
+  kind: FlashcardKind;
+  front: string;
+  back: string;
+  isKept: boolean;
+  sourceDocumentId: string | null;
+  sourceDocumentTitle: string | null;
+  sourcePageStart: number | null;
+  sourcePageEnd: number | null;
+  updatedAt: string;
+};
