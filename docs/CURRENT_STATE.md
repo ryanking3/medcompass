@@ -7,6 +7,7 @@ This is the implementation reference for the repository. It records the product 
 ```text
 Sign in with a magic link
   → create a course/module/topic
+  → add exams and weekly availability when planning is needed
   → upload a permitted PDF and link it to a topic
   → extract its page text and read the private source
   → write a cited note or create/edit source-linked cards
@@ -28,6 +29,7 @@ This is deliberately useful without AI. Manual study outputs must remain editabl
 | Reader | A signed private URL renders the original PDF in the browser. |
 | Notes | Topic notes are created and edited manually, with optional document/page/excerpt citations. |
 | Flashcards | Basic and cloze cards can be created, edited, deleted, marked as kept, linked to a source page, and exported to CSV for Anki. |
+| Study planner | Users can add exams, save weekly availability, generate topic-linked study blocks, and mark blocks planned/done/skipped. |
 | Empty states | A new account starts with a real empty workspace rather than sample study data. |
 
 ## Important implementation details
@@ -44,6 +46,7 @@ This is deliberately useful without AI. Manual study outputs must remain editabl
 - Reliable AI handling of source images, diagrams, or scanned-PDF OCR.
 - Reader thumbnails, zoom controls, in-app text selection, bookmarks, and passage handoff.
 - Rich-text notes, duplicate-card detection, review scheduling, `.apkg` export, or Anki synchronisation.
+- AI-assisted planner optimisation based on weak topics, source progress, notes, or flashcard history.
 - Google/passkey sign-in, account deletion, document deletion, or advanced profile editing.
 - Background workers/queues, observability, automated test coverage, CI, and production deployment.
 

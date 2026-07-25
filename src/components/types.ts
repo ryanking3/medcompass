@@ -1,4 +1,4 @@
-export type AppView = "home" | "library" | "dashboard" | "reader" | "notes" | "cards" | "settings";
+export type AppView = "home" | "library" | "planner" | "dashboard" | "reader" | "notes" | "cards" | "settings";
 
 export type Notify = (message: string) => void;
 
@@ -86,4 +86,40 @@ export type StudyFlashcard = {
   sourcePageStart: number | null;
   sourcePageEnd: number | null;
   updatedAt: string;
+};
+
+export type StudyExamTopic = {
+  topicId: string;
+  topicName: string;
+  weight: number;
+  confidence: number;
+};
+
+export type StudyExam = {
+  id: string;
+  courseId: string | null;
+  title: string;
+  examDate: string;
+  targetMinutes: number;
+  notes: string | null;
+  topics: StudyExamTopic[];
+};
+
+export type StudyAvailabilityRule = {
+  id: string;
+  dayOfWeek: number;
+  minutesAvailable: number;
+};
+
+export type StudyPlanBlockStatus = "planned" | "done" | "skipped";
+
+export type StudyPlanBlock = {
+  id: string;
+  examId: string;
+  topicId: string;
+  topicName: string;
+  startsOn: string;
+  durationMinutes: number;
+  title: string;
+  status: StudyPlanBlockStatus;
 };

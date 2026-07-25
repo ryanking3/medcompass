@@ -9,8 +9,9 @@ import { TopicModal, UploadModal } from "@/components/modals";
 import { TopicCards } from "@/components/TopicCards";
 import { TopicDashboard } from "@/components/TopicDashboard";
 import { TopicNotes } from "@/components/TopicNotes";
+import { StudyPlanner } from "@/components/StudyPlanner";
 import { WorkspaceHome } from "@/components/WorkspaceHome";
-import type { AppView, CreatedTopic, StudyCourse, StudyDocument, StudyFlashcard, StudyNote, StudyTopic } from "@/components/types";
+import type { AppView, CreatedTopic, StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyTopic } from "@/components/types";
 import { createClient } from "@/lib/supabase/client";
 
 type StudyWorkspaceProps = {
@@ -21,9 +22,12 @@ type StudyWorkspaceProps = {
   initialCourses: StudyCourse[];
   initialNotes: StudyNote[];
   initialFlashcards: StudyFlashcard[];
+  initialExams: StudyExam[];
+  initialAvailability: StudyAvailabilityRule[];
+  initialPlanBlocks: StudyPlanBlock[];
 };
 
-export function StudyWorkspace({ userId, email, fullName, initialDocuments, initialCourses, initialNotes, initialFlashcards }: StudyWorkspaceProps) {
+export function StudyWorkspace({ userId, email, fullName, initialDocuments, initialCourses, initialNotes, initialFlashcards, initialExams, initialAvailability, initialPlanBlocks }: StudyWorkspaceProps) {
   const [view, setView] = useState<AppView>("home");
   const [toast, setToast] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -35,6 +39,9 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
   const [selectedDocument, setSelectedDocument] = useState<StudyDocument | null>(null);
   const [notes, setNotes] = useState(initialNotes);
   const [flashcards, setFlashcards] = useState(initialFlashcards);
+  const [exams] = useState(initialExams);
+  const [availability] = useState(initialAvailability);
+  const [planBlocks] = useState(initialPlanBlocks);
   const [courses, setCourses] = useState(initialCourses);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(initialCourses[0]?.id ?? null);
   const [selectedTopic, setSelectedTopic] = useState<StudyTopic | null>(initialCourses[0]?.modules.flatMap((module) => module.topics)[0] ?? null);
@@ -118,9 +125,10 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
     <main className={sidebarCollapsed ? "app-shell app-shell-sidebar-collapsed" : "app-shell"}>
       <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} email={accountEmail} fullName={accountFullName} onSignOut={signOut} onOpenSettings={() => setView("settings")} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((current) => !current)} courses={courses} selectedCourseId={selectedCourseId} selectedTopicId={selectedTopic?.id ?? null} onSelectCourse={selectCourse} onSelectTopic={selectTopic} />
       <section className="content-area">
-        {view === "home" && <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} />}
+        {view === "home" && <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenPlanner={() => setView("planner")} />}
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
-        {view === "dashboard" && (selectedTopic ? <TopicDashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} documents={documents} notes={notes} flashcards={flashcards} onOpenDocument={openDocument} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} /> : <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} />)}
+        {view === "planner" && <StudyPlanner courses={courses} initialExams={exams} initialAvailability={availability} initialPlanBlocks={planBlocks} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} />}
+        {view === "dashboard" && (selectedTopic ? <TopicDashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} documents={documents} notes={notes} flashcards={flashcards} onOpenDocument={openDocument} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} /> : <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenPlanner={() => setView("planner")} />)}
         {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />)}
         {view === "notes" && <TopicNotes topic={selectedTopic} notes={notes} documents={documents} onBack={() => setView("dashboard")} onNoteCreated={handleNoteCreated} onNoteUpdated={handleNoteUpdated} />}
         {view === "cards" && <TopicCards topic={selectedTopic} cards={flashcards} documents={documents} onBack={() => setView("dashboard")} onCardCreated={handleCardCreated} onCardUpdated={handleCardUpdated} onCardDeleted={handleCardDeleted} />}

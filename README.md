@@ -12,17 +12,18 @@ The product is designed for medical study—not clinical decision-making. Do not
 - Private PDF upload, topic linking, page-text extraction, retryable processing, and a signed in-browser reader.
 - Manual, source-aware topic notes with page citations.
 - Manual basic and cloze flashcards, source-page links, and Anki-compatible CSV export.
+- Study planner with exams, weekly availability, generated topic-linked calendar blocks, and block status tracking.
 - Data-driven home, topic, library, notes, and cards views with clean empty states for new accounts.
 
 ## What is next
 
-The next major milestone is the trusted AI layer: retrieval over a student's own sources, page-linked citations, and AI-assisted explanations, notes, and card drafts. AI answers, embeddings, OCR/diagram understanding, rich-text editing, account settings, and direct Anki sync are not implemented yet.
+The next major milestone is the trusted AI layer: retrieval over a student's own sources, page-linked citations, and AI-assisted explanations, notes, and card drafts. AI answers, embeddings, OCR/diagram understanding, rich-text editing, direct Anki sync, and AI-assisted planner optimisation are not implemented yet.
 
 See [the current-state reference](docs/CURRENT_STATE.md) for the exact boundary between delivered and planned work.
 
 ## Local setup
 
-Prerequisites: Node.js 20+ and a Supabase project with the foundation migration applied.
+Prerequisites: Node.js 20+ and a Supabase project with the migrations in `supabase/migrations/` applied.
 
 ```sh
 cp .env.example .env.local
