@@ -5,9 +5,10 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { DocumentLibrary } from "@/components/DocumentLibrary";
 import { DocumentReader } from "@/components/DocumentReader";
 import { TopicModal, UploadModal } from "@/components/modals";
-import { Dashboard, Reader, StudentHome } from "@/components/screens";
 import { TopicCards } from "@/components/TopicCards";
+import { TopicDashboard } from "@/components/TopicDashboard";
 import { TopicNotes } from "@/components/TopicNotes";
+import { WorkspaceHome } from "@/components/WorkspaceHome";
 import type { AppView, CreatedTopic, StudyCourse, StudyDocument, StudyFlashcard, StudyNote, StudyTopic } from "@/components/types";
 import { createClient } from "@/lib/supabase/client";
 
@@ -111,10 +112,10 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses, initia
     <main className="app-shell">
       <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} email={email} onSignOut={signOut} courses={courses} selectedCourseId={selectedCourseId} selectedTopicId={selectedTopic?.id ?? null} onSelectCourse={selectCourse} onSelectTopic={selectTopic} />
       <section className="content-area">
-        {view === "home" && <StudentHome onOpenTopic={() => setView("dashboard")} onOpenReader={() => setView("reader")} onOpenLibrary={() => setView("library")} onOpenTopicModal={() => setTopicOpen(true)} />}
+        {view === "home" && <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} />}
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
-        {view === "dashboard" && <Dashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} onOpenReader={() => setView("reader")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} notify={notify} />}
-        {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} /> : <Reader onBack={() => setView("dashboard")} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} notify={notify} />)}
+        {view === "dashboard" && (selectedTopic ? <TopicDashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} documents={documents} notes={notes} flashcards={flashcards} onOpenDocument={openDocument} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} /> : <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} />)}
+        {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />)}
         {view === "notes" && <TopicNotes topic={selectedTopic} notes={notes} documents={documents} onBack={() => setView("dashboard")} onNoteCreated={handleNoteCreated} onNoteUpdated={handleNoteUpdated} />}
         {view === "cards" && <TopicCards topic={selectedTopic} cards={flashcards} documents={documents} onBack={() => setView("dashboard")} onCardCreated={handleCardCreated} onCardUpdated={handleCardUpdated} onCardDeleted={handleCardDeleted} />}
       </section>
