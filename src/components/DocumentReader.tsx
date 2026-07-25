@@ -141,7 +141,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           {error && <div className="reader-loading reader-error"><span>!</span><h1>Couldn’t open this PDF</h1><p>{error}</p><button className="button primary" onClick={onBack}>Return to library</button></div>}
           {frameUrl && <>
             <div className="reader-progress-bar"><span style={{ width: `${pageProgress ?? 0}%` }} /></div>
-            <iframe className="document-frame" src={frameUrl} title={`Reader for ${document.title}`} />
+            <iframe key={frameUrl} className="document-frame" src={frameUrl} title={`Reader for ${document.title}`} />
             <div className="reader-floating-tools"><span>{document.pageCount ? `Page ${visiblePage} of ${document.pageCount}` : `Page ${visiblePage}`}</span><button onClick={copyPageCitation}>{copiedCitation ? "Copied" : "Copy page citation"}</button></div>
           </>}
         </main>
