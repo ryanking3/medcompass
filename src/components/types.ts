@@ -106,7 +106,7 @@ export type StudyExam = {
 };
 
 export type StudyAvailabilityRule = {
-  id: string;
+  id?: string;
   dayOfWeek: number;
   minutesAvailable: number;
 };

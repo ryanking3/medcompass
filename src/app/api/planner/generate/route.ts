@@ -108,6 +108,20 @@ export async function POST(request: Request) {
   }
   if (!studyDays.length) return NextResponse.json({ error: "Your availability has no study time before this exam." }, { status: 400 });
 
+  const { data: existingBlocks, error: existingBlocksError } = await supabase
+    .from("study_plan_blocks")
+    .select("exam_id, starts_on, duration_minutes, status")
+    .eq("workspace_id", exam.workspace_id)
+    .gte("starts_on", toDateString(today))
+    .lt("starts_on", exam.exam_date);
+  if (existingBlocksError) return NextResponse.json({ error: "We couldn't read your existing study blocks." }, { status: 500 });
+
+  const committedMinutesByDate = new Map<string, number>();
+  for (const block of existingBlocks ?? []) {
+    if (block.exam_id === exam.id || block.status === "skipped") continue;
+    committedMinutesByDate.set(block.starts_on, (committedMinutesByDate.get(block.starts_on) ?? 0) + block.duration_minutes);
+  }
+
   const topicQueue = topicRows.flatMap((row) => {
     const priority = Math.max(1, row.weight + (5 - row.confidence));
     return Array.from({ length: priority }, () => ({ id: row.topic_id, name: firstRelation(row.topics)?.name ?? "Study topic" }));
@@ -118,7 +132,7 @@ export async function POST(request: Request) {
   const blocks: Array<{ workspace_id: string; exam_id: string; topic_id: string; starts_on: string; duration_minutes: number; title: string }> = [];
 
   for (const day of studyDays) {
-    let dayRemaining = day.minutesAvailable;
+    let dayRemaining = Math.max(0, day.minutesAvailable - (committedMinutesByDate.get(day.date) ?? 0));
     while (dayRemaining >= 30 && remainingMinutes > 0) {
       const topic = topicQueue[topicIndex % topicQueue.length];
       const duration = Math.min(120, dayRemaining, remainingMinutes);
@@ -145,7 +159,7 @@ export async function POST(request: Request) {
   const { error: deleteError } = await supabase.from("study_plan_blocks").delete().eq("exam_id", exam.id);
   if (deleteError) return NextResponse.json({ error: "We couldn't refresh the old plan for this exam." }, { status: 500 });
 
-  if (!blocks.length) return NextResponse.json({ blocks: [] });
+  if (!blocks.length) return NextResponse.json({ blocks: [], scheduledMinutes: 0, unscheduledMinutes: exam.target_minutes });
 
   const { data: insertedBlocks, error: insertError } = await supabase
     .from("study_plan_blocks")
@@ -166,5 +180,6 @@ export async function POST(request: Request) {
       status: block.status,
     })),
     scheduledMinutes: blocks.reduce((total, block) => total + block.duration_minutes, 0),
+    unscheduledMinutes: remainingMinutes,
   });
 }
