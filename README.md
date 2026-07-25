@@ -1,25 +1,57 @@
 # MedCompass
 
-MedCompass is an AI-powered study workspace for medical students. It helps students work from their permitted textbooks, lecture PDFs, and learning objectives to create grounded notes, revision material, and Anki-compatible flashcards.
+MedCompass is a private, source-aware study workspace for medical students. It brings a student's permitted PDFs, topic notes, and Anki-ready flashcards into one calm workflow.
 
-## Project documentation
+The product is designed for medical study—not clinical decision-making. Do not upload patient-identifiable information, clinical records, or content you are not permitted to use.
 
-- [Product specification](docs/PRODUCT_SPECIFICATION.md)
-- [v0.1 implementation plan](docs/V0_1_IMPLEMENTATION_PLAN.md)
+## What works today
 
-## v0.1 focus
+- Email magic-link authentication with Supabase.
+- Private, row-level-secured workspaces with courses, modules, topics, and learning objectives.
+- Private PDF upload, topic linking, page-text extraction, retryable processing, and a signed in-browser reader.
+- Manual, source-aware topic notes with page citations.
+- Manual basic and cloze flashcards, source-page links, and Anki-compatible CSV export.
+- Data-driven home, topic, library, notes, and cards views with clean empty states for new accounts.
 
-Upload a textbook chapter or lecture PDF, read it, ask source-cited questions, save notes, and generate editable Anki cards.
+## What is next
 
-## Status
+The next major milestone is the trusted AI layer: retrieval over a student's own sources, page-linked citations, and AI-assisted explanations, notes, and card drafts. AI answers, embeddings, OCR/diagram understanding, rich-text editing, account settings, and direct Anki sync are not implemented yet.
 
-Static UI prototype complete. Authentication, private uploads, and AI retrieval are intentionally not connected yet.
+See [the current-state reference](docs/CURRENT_STATE.md) for the exact boundary between delivered and planned work.
 
-## Run locally
+## Local setup
+
+Prerequisites: Node.js 20+ and a Supabase project with the foundation migration applied.
 
 ```sh
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to explore the dashboard, textbook reader, cited-tutor interface, and card-review flow using local sample data.
+Set these values in `.env.local` from **Supabase Dashboard → Project Settings → API Keys**:
+
+```sh
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_publishable_key
+```
+
+Open [http://localhost:3000](http://localhost:3000), request a magic link, and sign in. Configure the redirect URLs described in [Supabase auth setup](docs/SUPABASE_AUTH_SETUP.md) before testing authentication.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Run the local development server. |
+| `npm run lint` | Run ESLint. |
+| `npm run typecheck` | Check TypeScript without emitting files. |
+| `npm run build` | Create a production build. |
+
+## Documentation
+
+- [Current implementation state](docs/CURRENT_STATE.md)
+- [Product specification](docs/PRODUCT_SPECIFICATION.md)
+- [v0.1 implementation plan](docs/V0_1_IMPLEMENTATION_PLAN.md)
+- [v0.1 UX blueprint](docs/V0_1_UX_BLUEPRINT.md)
+- [Supabase authentication setup](docs/SUPABASE_AUTH_SETUP.md)
+- [Contributor and agent guidance](AGENTS.md)

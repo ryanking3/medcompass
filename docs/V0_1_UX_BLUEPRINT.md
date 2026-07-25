@@ -2,9 +2,13 @@
 
 ## Purpose
 
-This document defines the first usable MedCompass experience before application code is introduced. It covers one end-to-end study session:
+This document defines the intended first usable MedCompass experience. It covers one end-to-end study session:
 
 > A student uploads a permitted textbook chapter or lecture PDF, reads it, asks a source-cited question, saves a note, and creates a small Anki-ready card set.
+
+## Implementation status
+
+The workspace, authentication, private PDF upload/extraction, signed reader, manual cited notes, manual cards, and CSV export are now implemented. Source-cited AI chat, passage selection, AI-generated cards, custom reader controls, profile/settings, and review scheduling are not yet implemented. Treat the screen details below as product direction where they exceed [current state](CURRENT_STATE.md), not as existing behaviour.
 
 The interface should feel calm, academic, and trustworthy. It must help a student focus on material rather than make them manage another productivity system.
 
@@ -28,7 +32,7 @@ MedCompass
 │   │   │       ├── Notes
 │   │   │       ├── Cards
 │   │   │       └── Tutor history
-│   └── Settings
+│   └── Account/settings (future)
 └── Textbook reader (opened in a topic context)
 ```
 
@@ -38,9 +42,9 @@ MedCompass
 - **Topic:** the working area for one study topic.
 - **Reader:** a source-centred, full-focus view opened from the topic.
 - **Cards:** a review/edit/export view opened from the topic.
-- **Profile menu:** account, data, and sign-out only.
+- **Profile menu:** sign-out is available today; account/data controls are future work.
 
-There is no standalone global chat in v0.1. Chat lives inside a topic and needs an explicit source scope.
+There is no standalone global chat in v0.1. The planned tutor lives inside a topic and needs an explicit source scope.
 
 ## Primary student journey
 

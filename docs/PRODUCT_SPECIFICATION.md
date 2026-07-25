@@ -14,6 +14,10 @@ The first launch profile is a graduate-entry medical student at RCSI, but the pr
 
 > Give me the source material for a topic, and help me understand it, make reliable notes and cards, and know what to revise next.
 
+### Delivery status
+
+This document describes the product direction. MedCompass already has private workspaces, PDF upload/extraction/reading, source-aware manual notes, editable cards, and Anki CSV export. The cited AI tutor, semantic search, diagram understanding, planner, rich-text editing, and wider authentication options remain planned work. See [current state](CURRENT_STATE.md) for the implementation boundary.
+
 ## 2. Problem and opportunity
 
 Medical students already have strong tools, but the workflow is fragmented:
@@ -91,6 +95,8 @@ The Textbooks area is a first-class workspace, not just another upload button. S
 - Bookmarks, saved excerpts, and a personal “important pages” list
 - Optional OCR/vision processing for scanned pages, with clear indication when extracted text is uncertain
 
+**Current implementation:** PDFs can be uploaded privately, attached to a topic, extracted page by page, and rendered through a signed browser PDF view. The bespoke PDF.js reader controls, text selection, bookmarks, and split view are future work.
+
 #### Textbook AI actions
 
 All actions should operate on the selected passage, page range, chapter, or explicitly selected sources—not silently on an entire library.
@@ -142,6 +148,8 @@ Notes are topic-centred and source-aware rather than a broad productivity system
 - Manual Markdown, CSV, and pasted-content import in the initial product
 - Optional Notion import/integration after validating real demand
 
+**Current implementation:** notes are plain editable topic notes with optional document/page/excerpt citations. Rich-text blocks, images, imports, and AI note actions are planned.
+
 ### 5.5 Flashcard studio and Anki compatibility
 
 Cards must be editable, sparse, and grounded in objectives. The goal is to help students make high-quality recall prompts, not flood them with hundreds of generic cards.
@@ -153,6 +161,8 @@ Cards must be editable, sparse, and grounded in objectives. The goal is to help 
 - Source panel showing the evidence behind a card
 - Export to Anki-compatible CSV and `.apkg`
 - Import existing cards/decks later where technically and legally appropriate
+
+**Current implementation:** editable basic and cloze cards, source-page links, kept state, and Anki-compatible CSV export are available. AI card drafts, review scheduling, duplicate detection, and `.apkg` export are planned.
 
 Direct background sync to a local Anki collection is a later feature because a browser app cannot reliably manage a student's local Anki database without a local companion or AnkiConnect setup.
 
@@ -176,14 +186,27 @@ The planner translates course scope into the next useful study action.
 5. **Private by default.** A student's sources and notes are not shared, trained on, or publicly indexed.
 6. **Works beyond RCSI.** School templates enhance the experience but do not define the product.
 
-## 7. Recommended technical architecture
+## 7. Technical architecture
+
+### Current implementation
+
+| Area | Current choice |
+| --- | --- |
+| App and UI | Next.js + TypeScript + React components with repository-owned CSS. |
+| Auth, database, file storage | Supabase Auth, Postgres, private Storage, and Row Level Security. |
+| Database access | Supabase clients and authenticated Next.js route handlers; schema migrations are stored in `supabase/migrations/`. |
+| PDF processing | Server-side PDF.js extraction into page records. |
+| PDF rendering | Short-lived signed URL displayed in the browser. |
+| Study outputs | Source-aware manual notes and cards with CSV export. |
+
+### Target architecture
 
 | Area | Recommendation | Notes |
 |---|---|---|
 | App | Next.js + TypeScript | One web codebase, strong React ecosystem |
-| UI | Tailwind CSS + shadcn/ui | Fast, accessible product UI |
+| UI | Evolve the existing component and CSS system deliberately | Keep the calm, accessible interface consistent; Tailwind/shadcn are not currently adopted. |
 | Auth, database, file storage | Supabase | Postgres, Auth, private storage, Row Level Security |
-| Database access | Drizzle ORM | Typed schema and lightweight migrations |
+| Database access | Supabase clients plus migrations | Use a new ORM only when it demonstrably simplifies the established data/RLS model. |
 | Search/retrieval | Postgres + pgvector | Permission-aware semantic search close to core data |
 | PDF reader | PDF.js | Client-side rendering, thumbnails, text selection, navigation |
 | Document processing | Background worker + PDF text extraction; OCR fallback | Extraction, page mapping, chunking, embeddings |
@@ -209,11 +232,11 @@ Retrieval quality should be evaluated with a curated set of student questions be
 
 ### Authentication
 
-- Magic-link email sign-in as the default
-- Google sign-in for low-friction student onboarding
+- Magic-link email sign-in is the current and default authentication flow
+- Google sign-in is a possible future low-friction onboarding option
 - Apple sign-in later, especially if the product becomes a mobile PWA
 - Verified account required to retain uploads and personal study data
-- A non-upload demo workspace can let prospective users experience the product safely
+- Private filming/demo workspaces are owner-only and may be seeded directly; they are not a public product mode
 
 ### Roles
 
@@ -265,13 +288,13 @@ The essential relationship is `source_chunk → document → page`. Every note, 
 
 ### Release 1: trusted study loop
 
-1. Authentication and course/topic workspaces
-2. Private PDF/textbook upload and reader
-3. Page-aware extraction and cited chat over selected sources
-4. Topic notes and saved excerpts
-5. Card generation, review/edit, and Anki export
-6. Basic exam-date revision planner
-7. Privacy, deletion, error handling, and usage telemetry
+1. Authentication and course/topic workspaces — delivered
+2. Private PDF/textbook upload and basic reader — delivered
+3. Page-aware extraction — delivered
+4. Topic notes and source-linked cards with CSV export — delivered manually
+5. Cited chat over selected sources — next major milestone
+6. Card generation/review enhancements and planner — future v0.1 work
+7. Privacy deletion flows, error handling, and telemetry — required before broader beta
 
 ### Release 2: deepen the study workflow
 
