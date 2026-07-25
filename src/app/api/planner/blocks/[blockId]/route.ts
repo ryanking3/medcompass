@@ -4,6 +4,15 @@ import type { StudyPlanBlockStatus } from "@/components/types";
 
 const statuses: StudyPlanBlockStatus[] = ["planned", "done", "skipped"];
 
+function asArray<T>(value: T | T[] | null | undefined): T[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return asArray(value)[0] ?? null;
+}
+
 function textField(value: unknown, maximumLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
 }
@@ -37,7 +46,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ bl
       id: block.id,
       examId: block.exam_id,
       topicId: block.topic_id,
-      topicName: block.topics?.[0]?.name ?? "Study topic",
+      topicName: firstRelation(block.topics)?.name ?? "Study topic",
       startsOn: block.starts_on,
       durationMinutes: block.duration_minutes,
       title: block.title,

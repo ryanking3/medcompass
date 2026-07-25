@@ -3,6 +3,15 @@ import { StudyWorkspace } from "@/components/StudyWorkspace";
 import type { StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock } from "@/components/types";
 import { createClient } from "@/lib/supabase/server";
 
+function asArray<T>(value: T | T[] | null | undefined): T[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return asArray(value)[0] ?? null;
+}
+
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -62,7 +71,7 @@ export default async function Home() {
     status: document.status,
     pageCount: document.page_count,
     createdAt: document.created_at,
-    linkedTopics: (document.document_topics ?? []).flatMap((link) => (link.topics ?? []).map((topic) => ({ id: topic.id, name: topic.name }))),
+    linkedTopics: asArray(document.document_topics).flatMap((link) => asArray(link.topics).map((topic) => ({ id: topic.id, name: topic.name }))),
   }));
 
   const courses: StudyCourse[] = (courseRows ?? []).map((course) => ({
@@ -71,13 +80,13 @@ export default async function Home() {
     institution: course.institution,
     programme: course.programme,
     academicYear: course.academic_year,
-    modules: (course.modules ?? [])
+    modules: asArray(course.modules)
       .sort((first, second) => first.sort_order - second.sort_order)
       .map((module) => ({
         id: module.id,
         courseId: module.course_id,
         name: module.name,
-        topics: (module.topics ?? [])
+        topics: asArray(module.topics)
           .sort((first, second) => first.sort_order - second.sort_order)
           .map((topic) => ({
             id: topic.id,
@@ -85,7 +94,7 @@ export default async function Home() {
             name: topic.name,
             description: topic.description,
             lastStudiedAt: topic.last_studied_at,
-            learningObjectives: (topic.learning_objectives ?? [])
+            learningObjectives: asArray(topic.learning_objectives)
               .sort((first, second) => first.sort_order - second.sort_order)
               .map((objective) => ({ id: objective.id, body: objective.body })),
           })),
@@ -98,17 +107,17 @@ export default async function Home() {
     title: note.title,
     body: note.body,
     updatedAt: note.updated_at,
-    citations: (note.note_citations ?? []).map((citation) => ({
+    citations: asArray(note.note_citations).map((citation) => ({
       id: citation.id,
       documentId: citation.document_id,
-      documentTitle: citation.documents[0]?.title ?? "Source",
+      documentTitle: firstRelation(citation.documents)?.title ?? "Source",
       pageStart: citation.page_start,
       pageEnd: citation.page_end,
       excerpt: citation.excerpt,
     })),
   }));
 
-  const flashcards: StudyFlashcard[] = (deckRows ?? []).flatMap((deck) => (deck.flashcards ?? []).map((card) => ({
+  const flashcards: StudyFlashcard[] = (deckRows ?? []).flatMap((deck) => asArray(deck.flashcards).map((card) => ({
     id: card.id,
     deckId: card.deck_id,
     topicId: deck.topic_id,
@@ -117,7 +126,7 @@ export default async function Home() {
     back: card.back,
     isKept: card.is_kept,
     sourceDocumentId: card.source_document_id,
-    sourceDocumentTitle: card.documents?.[0]?.title ?? null,
+    sourceDocumentTitle: firstRelation(card.documents)?.title ?? null,
     sourcePageStart: card.source_page_start,
     sourcePageEnd: card.source_page_end,
     updatedAt: card.updated_at,
@@ -130,9 +139,9 @@ export default async function Home() {
     examDate: exam.exam_date,
     targetMinutes: exam.target_minutes,
     notes: exam.notes,
-    topics: (exam.study_exam_topics ?? []).map((link) => ({
+    topics: asArray(exam.study_exam_topics).map((link) => ({
       topicId: link.topic_id,
-      topicName: link.topics?.[0]?.name ?? "Study topic",
+      topicName: firstRelation(link.topics)?.name ?? "Study topic",
       weight: link.weight,
       confidence: link.confidence,
     })),
@@ -148,7 +157,7 @@ export default async function Home() {
     id: block.id,
     examId: block.exam_id,
     topicId: block.topic_id,
-    topicName: block.topics?.[0]?.name ?? "Study topic",
+    topicName: firstRelation(block.topics)?.name ?? "Study topic",
     startsOn: block.starts_on,
     durationMinutes: block.duration_minutes,
     title: block.title,

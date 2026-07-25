@@ -5,8 +5,17 @@ type ExamTopicRow = {
   topic_id: string;
   weight: number;
   confidence: number;
-  topics: Array<{ id: string; name: string }> | null;
+  topics: { id: string; name: string } | Array<{ id: string; name: string }> | null;
 };
+
+function asArray<T>(value: T | T[] | null | undefined): T[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return asArray(value)[0] ?? null;
+}
 
 function textField(value: unknown, maximumLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
@@ -80,7 +89,7 @@ export async function POST(request: Request) {
 
   const topicQueue = topicRows.flatMap((row) => {
     const priority = Math.max(1, row.weight + (5 - row.confidence));
-    return Array.from({ length: priority }, () => ({ id: row.topic_id, name: row.topics?.[0]?.name ?? "Study topic" }));
+    return Array.from({ length: priority }, () => ({ id: row.topic_id, name: firstRelation(row.topics)?.name ?? "Study topic" }));
   });
 
   let remainingMinutes = exam.target_minutes;
@@ -129,7 +138,7 @@ export async function POST(request: Request) {
       id: block.id,
       examId: block.exam_id,
       topicId: block.topic_id,
-      topicName: block.topics?.[0]?.name ?? "Study topic",
+      topicName: firstRelation(block.topics)?.name ?? "Study topic",
       startsOn: block.starts_on,
       durationMinutes: block.duration_minutes,
       title: block.title,
