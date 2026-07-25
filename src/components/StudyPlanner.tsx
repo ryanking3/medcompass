@@ -26,6 +26,10 @@ function todayString() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function tomorrowString() {
+  return addDays(new Date(`${todayString()}T00:00:00`), 1).toISOString().slice(0, 10);
+}
+
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() + days);
@@ -129,7 +133,7 @@ export function StudyPlanner({ courses, initialExams, initialAvailability, initi
     const response = await fetch("/api/planner/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ examId: selectedExam.id }),
+      body: JSON.stringify({ examId: selectedExam.id, availability }),
     });
     const payload = await response.json();
     setBusy(null);
@@ -175,7 +179,7 @@ export function StudyPlanner({ courses, initialExams, initialAvailability, initi
         <div className="panel-heading"><div><p className="eyebrow">Exam setup</p><h2>Add an exam</h2></div></div>
         <div className="planner-form">
           <label>Exam name<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Cardiovascular systems exam" /></label>
-          <label>Date<input type="date" min={todayString()} value={examDate} onChange={(event) => setExamDate(event.target.value)} /></label>
+          <label>Date<input type="date" min={tomorrowString()} value={examDate} onChange={(event) => setExamDate(event.target.value)} /></label>
           <label>Course<select value={selectedCourseId} onChange={(event) => { setSelectedCourseId(event.target.value); setSelectedTopicIds([]); }}>{courses.map((course) => <option key={course.id} value={course.id}>{course.name}</option>)}</select></label>
           <label>Target study hours<input type="number" min="1" max="200" value={targetHours} onChange={(event) => setTargetHours(Number(event.target.value))} /></label>
           <label className="wide">Notes<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional: exam format, high-yield reminders, lecturer emphasis..." /></label>

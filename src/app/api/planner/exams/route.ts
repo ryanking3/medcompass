@@ -10,6 +10,15 @@ function dateField(value: unknown) {
   return value;
 }
 
+function parseDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function toDateString(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 function minutesField(value: unknown) {
   return typeof value === "number" && Number.isInteger(value) ? Math.min(Math.max(value, 30), 60000) : 600;
 }
@@ -34,6 +43,7 @@ export async function POST(request: Request) {
   const topicIds = Array.isArray(body.topicIds) ? body.topicIds.map((topicId) => textField(topicId, 100)).filter(Boolean) : [];
 
   if (!title || !examDate) return NextResponse.json({ error: "Give the exam a title and date." }, { status: 400 });
+  if (parseDate(examDate) <= parseDate(toDateString(new Date()))) return NextResponse.json({ error: "Choose an exam date from tomorrow onwards." }, { status: 400 });
   if (!topicIds.length) return NextResponse.json({ error: "Choose at least one topic for this exam." }, { status: 400 });
 
   const { data: topics, error: topicError } = await supabase

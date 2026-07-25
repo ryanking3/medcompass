@@ -21,6 +21,19 @@ function textField(value: unknown, maximumLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
 }
 
+function minutesField(value: unknown) {
+  return typeof value === "number" && Number.isInteger(value) ? Math.min(Math.max(value, 0), 720) : 0;
+}
+
+function availabilityFromBody(value: unknown) {
+  if (!Array.isArray(value)) return null;
+  const rules = Array.from({ length: 7 }, (_, dayOfWeek) => {
+    const matchingRule = value.find((rule) => typeof rule === "object" && rule && "dayOfWeek" in rule && rule.dayOfWeek === dayOfWeek) as Record<string, unknown> | undefined;
+    return { dayOfWeek, minutesAvailable: minutesField(matchingRule?.minutesAvailable) };
+  });
+  return rules.some((rule) => rule.minutesAvailable > 0) ? rules : null;
+}
+
 function parseDate(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day));
@@ -65,20 +78,28 @@ export async function POST(request: Request) {
     .returns<ExamTopicRow[]>();
   if (topicsError || !topicRows?.length) return NextResponse.json({ error: "Add topics to this exam before generating a plan." }, { status: 400 });
 
-  const { data: availabilityRows, error: availabilityError } = await supabase
+  const availabilityFromRequest = availabilityFromBody(body.availability);
+  if (availabilityFromRequest) {
+    const { error: upsertAvailabilityError } = await supabase
+      .from("study_availability_rules")
+      .upsert(availabilityFromRequest.map((rule) => ({ workspace_id: exam.workspace_id, day_of_week: rule.dayOfWeek, minutes_available: rule.minutesAvailable })), { onConflict: "workspace_id,day_of_week" });
+    if (upsertAvailabilityError) return NextResponse.json({ error: "We couldn't save your weekly availability before generating the plan." }, { status: 500 });
+  }
+
+  const { data: savedAvailabilityRows, error: availabilityError } = await supabase
     .from("study_availability_rules")
     .select("day_of_week, minutes_available")
     .eq("workspace_id", exam.workspace_id)
     .order("day_of_week", { ascending: true });
   if (availabilityError) return NextResponse.json({ error: "We couldn't read your weekly availability." }, { status: 500 });
 
-  const availabilityByDay = new Map((availabilityRows ?? []).map((rule) => [rule.day_of_week, rule.minutes_available]));
+  const availabilityByDay = new Map((savedAvailabilityRows ?? []).map((rule) => [rule.day_of_week, rule.minutes_available]));
   const hasAvailability = Array.from(availabilityByDay.values()).some((minutes) => minutes > 0);
   if (!hasAvailability) return NextResponse.json({ error: "Add some weekly availability before generating a plan." }, { status: 400 });
 
   const today = parseDate(toDateString(new Date()));
   const examDate = parseDate(exam.exam_date);
-  if (examDate <= today) return NextResponse.json({ error: "Choose a future exam date before generating a plan." }, { status: 400 });
+  if (examDate <= today) return NextResponse.json({ error: "Choose an exam date from tomorrow onwards before generating a plan." }, { status: 400 });
 
   const studyDays: Array<{ date: string; minutesAvailable: number }> = [];
   for (let cursor = today; cursor < examDate; cursor = addDays(cursor, 1)) {
