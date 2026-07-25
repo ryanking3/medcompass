@@ -1,7 +1,7 @@
 import type { AppView, StudyCourse, StudyTopic } from "./types";
 
 function Brand() {
-  return <div className="brand" aria-label="MedCompass"><span className="brand-mark" aria-hidden="true">M</span><span>MedCompass</span></div>;
+  return <div className="brand" aria-label="MedCompass"><span className="brand-mark" aria-hidden="true">M</span><span className="sidebar-label">MedCompass</span></div>;
 }
 
 function Icon({ children }: { children: React.ReactNode }) {
@@ -16,6 +16,8 @@ type AppSidebarProps = {
   fullName: string | null;
   onSignOut: () => void;
   onOpenSettings: () => void;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   courses: StudyCourse[];
   selectedCourseId: string | null;
   selectedTopicId: string | null;
@@ -23,20 +25,23 @@ type AppSidebarProps = {
   onSelectTopic: (topic: StudyTopic) => void;
 };
 
-export function AppSidebar({ view, onNavigate, onCreateTopic, email, fullName, onSignOut, onOpenSettings, courses, selectedCourseId, selectedTopicId, onSelectCourse, onSelectTopic }: AppSidebarProps) {
+export function AppSidebar({ view, onNavigate, onCreateTopic, email, fullName, onSignOut, onOpenSettings, collapsed, onToggleCollapsed, courses, selectedCourseId, selectedTopicId, onSelectCourse, onSelectTopic }: AppSidebarProps) {
   const initials = (fullName || email).split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   const selectedCourse = courses.find((course) => course.id === selectedCourseId) ?? null;
   const topics = selectedCourse?.modules.flatMap((module) => module.topics) ?? [];
+  const profileLabel = fullName || email;
 
   return (
-    <aside className="sidebar">
-      <Brand />
+    <aside className={collapsed ? "sidebar sidebar-collapsed" : "sidebar"}>
+      <div className="sidebar-top">
+        <Brand />
+        <button className="sidebar-toggle" onClick={onToggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? "›" : "‹"}</button>
+      </div>
       <nav className="primary-nav" aria-label="Primary navigation">
-        <button className={view === "home" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("home")}><Icon>⌂</Icon> Home</button>
-        <button className={view === "library" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("library")}><Icon>▤</Icon> Library</button>
-        <button className={view === "notes" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("notes")}><Icon>↗</Icon> Notes</button>
-        <button className={view === "cards" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("cards")}><Icon>◇</Icon> Cards</button>
-        <button className={view === "settings" ? "nav-item active" : "nav-item"} onClick={onOpenSettings}><Icon>⚙</Icon> Settings</button>
+        <button className={view === "home" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("home")} title="Home" aria-label="Home"><Icon>⌂</Icon><span className="sidebar-label">Home</span></button>
+        <button className={view === "library" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("library")} title="Library" aria-label="Library"><Icon>▤</Icon><span className="sidebar-label">Library</span></button>
+        <button className={view === "notes" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("notes")} title="Notes" aria-label="Notes"><Icon>↗</Icon><span className="sidebar-label">Notes</span></button>
+        <button className={view === "cards" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("cards")} title="Cards" aria-label="Cards"><Icon>◇</Icon><span className="sidebar-label">Cards</span></button>
       </nav>
 
       <div className="sidebar-section">
@@ -53,7 +58,7 @@ export function AppSidebar({ view, onNavigate, onCreateTopic, email, fullName, o
       </div>
 
       <div className="sidebar-footer">
-        <button className="profile-button" onClick={onOpenSettings}><span className="avatar">{initials}</span><span><strong>{fullName || email}</strong><small>{fullName ? email : "Student workspace"}</small></span></button>
+        <button className={view === "settings" ? "profile-button active" : "profile-button"} onClick={onOpenSettings} title="Account settings" aria-label="Account settings"><span className="avatar">{initials}</span><span className="sidebar-label"><strong>{profileLabel}</strong><small>{fullName ? email : "Account settings"}</small></span></button>
         <button className="sign-out-button" onClick={onSignOut}>Sign out</button>
       </div>
     </aside>

@@ -26,6 +26,7 @@ type StudyWorkspaceProps = {
 export function StudyWorkspace({ userId, email, fullName, initialDocuments, initialCourses, initialNotes, initialFlashcards }: StudyWorkspaceProps) {
   const [view, setView] = useState<AppView>("home");
   const [toast, setToast] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [accountEmail, setAccountEmail] = useState(email);
   const [accountFullName, setAccountFullName] = useState(fullName);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -114,8 +115,8 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
   };
 
   return (
-    <main className="app-shell">
-      <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} email={accountEmail} fullName={accountFullName} onSignOut={signOut} onOpenSettings={() => setView("settings")} courses={courses} selectedCourseId={selectedCourseId} selectedTopicId={selectedTopic?.id ?? null} onSelectCourse={selectCourse} onSelectTopic={selectTopic} />
+    <main className={sidebarCollapsed ? "app-shell app-shell-sidebar-collapsed" : "app-shell"}>
+      <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} email={accountEmail} fullName={accountFullName} onSignOut={signOut} onOpenSettings={() => setView("settings")} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((current) => !current)} courses={courses} selectedCourseId={selectedCourseId} selectedTopicId={selectedTopic?.id ?? null} onSelectCourse={selectCourse} onSelectTopic={selectTopic} />
       <section className="content-area">
         {view === "home" && <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} />}
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}

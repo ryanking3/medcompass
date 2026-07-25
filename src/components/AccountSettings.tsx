@@ -149,7 +149,7 @@ export function AccountSettings({ userId, email, fullName, onProfileUpdated, onS
         </section>
 
         <section className="settings-card settings-card-wide settings-signout-card">
-          <div><p className="eyebrow">Session</p><h2>Sign out of MedCompass</h2><p>Use this on a shared or public device.</p></div>
+          <div><p className="eyebrow">Session</p><h2>Sign out of MedCompass</h2><p>End this session and return to the sign-in screen.</p></div>
           <button className="button ghost" type="button" onClick={onSignOut}>Sign out</button>
         </section>
       </div>
