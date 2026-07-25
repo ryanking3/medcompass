@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { AccountSettings } from "@/components/AccountSettings";
 import { DocumentLibrary } from "@/components/DocumentLibrary";
 import { DocumentReader } from "@/components/DocumentReader";
 import { TopicModal, UploadModal } from "@/components/modals";
@@ -13,16 +14,20 @@ import type { AppView, CreatedTopic, StudyCourse, StudyDocument, StudyFlashcard,
 import { createClient } from "@/lib/supabase/client";
 
 type StudyWorkspaceProps = {
+  userId: string;
   email: string;
+  fullName: string | null;
   initialDocuments: StudyDocument[];
   initialCourses: StudyCourse[];
   initialNotes: StudyNote[];
   initialFlashcards: StudyFlashcard[];
 };
 
-export function StudyWorkspace({ email, initialDocuments, initialCourses, initialNotes, initialFlashcards }: StudyWorkspaceProps) {
+export function StudyWorkspace({ userId, email, fullName, initialDocuments, initialCourses, initialNotes, initialFlashcards }: StudyWorkspaceProps) {
   const [view, setView] = useState<AppView>("home");
   const [toast, setToast] = useState("");
+  const [accountEmail, setAccountEmail] = useState(email);
+  const [accountFullName, setAccountFullName] = useState(fullName);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
   const [documents, setDocuments] = useState(initialDocuments);
@@ -110,7 +115,7 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses, initia
 
   return (
     <main className="app-shell">
-      <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} email={email} onSignOut={signOut} courses={courses} selectedCourseId={selectedCourseId} selectedTopicId={selectedTopic?.id ?? null} onSelectCourse={selectCourse} onSelectTopic={selectTopic} />
+      <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} email={accountEmail} fullName={accountFullName} onSignOut={signOut} onOpenSettings={() => setView("settings")} courses={courses} selectedCourseId={selectedCourseId} selectedTopicId={selectedTopic?.id ?? null} onSelectCourse={selectCourse} onSelectTopic={selectTopic} />
       <section className="content-area">
         {view === "home" && <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} />}
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
@@ -118,6 +123,10 @@ export function StudyWorkspace({ email, initialDocuments, initialCourses, initia
         {view === "reader" && (selectedDocument ? <DocumentReader document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />)}
         {view === "notes" && <TopicNotes topic={selectedTopic} notes={notes} documents={documents} onBack={() => setView("dashboard")} onNoteCreated={handleNoteCreated} onNoteUpdated={handleNoteUpdated} />}
         {view === "cards" && <TopicCards topic={selectedTopic} cards={flashcards} documents={documents} onBack={() => setView("dashboard")} onCardCreated={handleCardCreated} onCardUpdated={handleCardUpdated} onCardDeleted={handleCardDeleted} />}
+        {view === "settings" && <AccountSettings userId={userId} email={accountEmail} fullName={accountFullName} onSignOut={signOut} onProfileUpdated={(nextProfile) => {
+          if (typeof nextProfile.email === "string") setAccountEmail(nextProfile.email);
+          if ("fullName" in nextProfile) setAccountFullName(nextProfile.fullName ?? null);
+        }} />}
       </section>
       {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} onUploadComplete={handleDocumentUploaded} topics={courses.flatMap((course) => course.modules.flatMap((module) => module.topics))} selectedTopicId={selectedTopic?.id ?? null} />}
       {topicOpen && <TopicModal onClose={() => setTopicOpen(false)} courses={courses} selectedCourseId={selectedCourseId} onTopicCreated={handleTopicCreated} />}

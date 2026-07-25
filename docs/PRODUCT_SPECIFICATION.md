@@ -16,7 +16,7 @@ The first launch profile is a graduate-entry medical student at RCSI, but the pr
 
 ### Delivery status
 
-This document describes the product direction. MedCompass already has private workspaces, PDF upload/extraction/reading, source-aware manual notes, editable cards, and Anki CSV export. The cited AI tutor, semantic search, diagram understanding, planner, rich-text editing, and wider authentication options remain planned work. See [current state](CURRENT_STATE.md) for the implementation boundary.
+This document describes the product direction. MedCompass already has private workspaces, email/password and magic-link authentication, basic account settings, PDF upload/extraction/reading, source-aware manual notes, editable cards, and Anki CSV export. The cited AI tutor, semantic search, diagram understanding, planner, rich-text editing, and wider authentication options remain planned work. See [current state](CURRENT_STATE.md) for the implementation boundary.
 
 ## 2. Problem and opportunity
 
@@ -232,7 +232,7 @@ Retrieval quality should be evaluated with a curated set of student questions be
 
 ### Authentication
 
-- Magic-link email sign-in is the current and default authentication flow
+- Email/password sign-in and account creation are current; magic links remain available as a password-free fallback
 - Google sign-in is a possible future low-friction onboarding option
 - Apple sign-in later, especially if the product becomes a mobile PWA
 - Verified account required to retain uploads and personal study data

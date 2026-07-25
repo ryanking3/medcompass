@@ -19,7 +19,8 @@ This is deliberately useful without AI. Manual study outputs must remain editabl
 
 | Area | Current behaviour |
 | --- | --- |
-| Authentication | Supabase email magic links, callback handling, session refresh, and sign out. |
+| Authentication | Supabase email/password sign-in and account creation, password recovery, magic-link fallback, callback handling, session refresh, and sign out. |
+| Account settings | Users can update their display name, request an email change, set/change a password, and sign out. |
 | Access control | Authenticated workspace data and private `study-sources` storage are protected by Supabase row-level security. |
 | Study structure | Users can create and navigate courses, modules, topics, and learning objectives. |
 | Sources | PDF upload is private, validates the file type/size, can be linked to a topic, and shows processing state. |
@@ -43,7 +44,7 @@ This is deliberately useful without AI. Manual study outputs must remain editabl
 - Reliable AI handling of source images, diagrams, or scanned-PDF OCR.
 - Reader thumbnails, zoom controls, in-app text selection, bookmarks, and passage handoff.
 - Rich-text notes, duplicate-card detection, review scheduling, `.apkg` export, or Anki synchronisation.
-- Google/password/passkey sign-in, account settings, account deletion, document deletion, or profile editing.
+- Google/passkey sign-in, account deletion, document deletion, or advanced profile editing.
 - Background workers/queues, observability, automated test coverage, CI, and production deployment.
 
 ## Next implementation priority
@@ -73,4 +74,3 @@ npm run build
 ```
 
 For database changes, add an ordered migration under `supabase/migrations/`, apply it to the intended Supabase project, and verify row-level-security behaviour with authenticated user flows.
-

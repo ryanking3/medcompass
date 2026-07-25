@@ -11,6 +11,14 @@ export default async function Home() {
     return <SignInForm />;
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const metadataName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : null;
+
   const { data: documentRows } = await supabase
     .from("documents")
     .select("id, title, original_filename, storage_path, kind, status, page_count, created_at, document_topics(topic_id, topics(id, name))")
@@ -100,5 +108,5 @@ export default async function Home() {
     updatedAt: card.updated_at,
   })));
 
-  return <StudyWorkspace email={user.email ?? "Signed-in student"} initialDocuments={documents} initialCourses={courses} initialNotes={notes} initialFlashcards={flashcards} />;
+  return <StudyWorkspace userId={user.id} email={user.email ?? "Signed-in student"} fullName={profile?.full_name ?? metadataName} initialDocuments={documents} initialCourses={courses} initialNotes={notes} initialFlashcards={flashcards} />;
 }

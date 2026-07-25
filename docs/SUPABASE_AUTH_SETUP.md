@@ -1,6 +1,6 @@
 # Supabase authentication setup
 
-MedCompass currently uses Supabase **email magic links** only. A user enters their email address, receives a short-lived sign-in link, and returns through the app callback with an authenticated session. There is not yet password, Google, passkey, profile, or account-settings support.
+MedCompass uses Supabase email authentication: password sign-in, password account creation, password recovery, and magic links as a password-free fallback. Password users can manage their profile name, email address, and password in the app settings. Google and passkeys are not implemented.
 
 The application includes a protected entry point, auth callback route, session-refresh proxy, and sign-out control. The database and private source storage are protected by row-level security.
 
@@ -19,7 +19,12 @@ https://app.example.com/auth/callback
 
 Then change **Site URL** to the production application URL. Keep localhost as an allowed redirect for local development if required.
 
-In **Authentication → Providers → Email**, ensure email authentication is enabled.
+In **Authentication → Providers → Email**:
+
+- Ensure email authentication is enabled.
+- Keep **Allow new users to sign up** enabled so the Create account screen can work.
+- Keep **Confirm Email** enabled for a real beta. New users will confirm their email before their first password sign-in; the app already sends them to `/auth/callback` afterwards.
+- Review password-security options before launch. If you enable a setting that requires recent reauthentication or a current password before a password change, users can still use the password-reset flow; add the corresponding in-app reauthentication UI before relying on that stricter setting.
 
 ## Local configuration
 
@@ -38,7 +43,7 @@ Run `npm run dev`, visit `http://localhost:3000`, request a sign-in link from an
 
 ## Email delivery
 
-Supabase's default email template is suitable for early local testing. Branded subjects/bodies require custom SMTP in Supabase. Configure a sender domain and production SMTP before inviting a wider beta, and test delivery across common student inbox providers.
+Supabase's default email template is suitable for early local testing. It sends confirmation, magic-link, reset-password, and email-change messages. Branded subjects/bodies require custom SMTP in Supabase. Configure a sender domain and production SMTP before inviting a wider beta, and test delivery across common student inbox providers. Supabase's default sender is rate-limited and best-effort, so it is not appropriate for a wider launch. [Supabase password auth documentation](https://supabase.com/docs/guides/auth/passwords)
 
 ## Security notes
 

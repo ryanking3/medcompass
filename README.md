@@ -6,7 +6,8 @@ The product is designed for medical study—not clinical decision-making. Do not
 
 ## What works today
 
-- Email magic-link authentication with Supabase.
+- Supabase authentication with email/password sign-in, account creation, password reset, and magic-link fallback.
+- In-app account settings for profile name, email changes, password management, and sign out.
 - Private, row-level-secured workspaces with courses, modules, topics, and learning objectives.
 - Private PDF upload, topic linking, page-text extraction, retryable processing, and a signed in-browser reader.
 - Manual, source-aware topic notes with page citations.
