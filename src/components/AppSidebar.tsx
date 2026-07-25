@@ -4,15 +4,8 @@ function Brand() {
   return <div className="brand" aria-label="MedCompass"><span className="brand-mark" aria-hidden="true">M</span><span className="sidebar-label">MedCompass</span></div>;
 }
 
-const primaryNav: Array<{ view: AppView; label: string; mark: string }> = [
-  { view: "home", label: "Home", mark: "H" },
-  { view: "library", label: "Library", mark: "L" },
-  { view: "notes", label: "Notes", mark: "N" },
-  { view: "cards", label: "Cards", mark: "C" },
-];
-
-function NavMark({ children }: { children: React.ReactNode }) {
-  return <span className="nav-mark" aria-hidden="true">{children}</span>;
+function Icon({ children }: { children: React.ReactNode }) {
+  return <span className="icon" aria-hidden="true">{children}</span>;
 }
 
 type AppSidebarProps = {
@@ -42,10 +35,13 @@ export function AppSidebar({ view, onNavigate, onCreateTopic, email, fullName, o
     <aside className={collapsed ? "sidebar sidebar-collapsed" : "sidebar"}>
       <div className="sidebar-top">
         <Brand />
-        <button className="sidebar-toggle" onClick={onToggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}><span className="sidebar-toggle-icon" aria-hidden="true" /></button>
+        <button className="sidebar-toggle" onClick={onToggleCollapsed} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? "›" : "‹"}</button>
       </div>
       <nav className="primary-nav" aria-label="Primary navigation">
-        {primaryNav.map((item) => <button key={item.view} className={view === item.view ? "nav-item active" : "nav-item"} onClick={() => onNavigate(item.view)} title={item.label} aria-label={item.label}><NavMark>{item.mark}</NavMark><span className="sidebar-label">{item.label}</span></button>)}
+        <button className={view === "home" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("home")} title="Home" aria-label="Home"><Icon>⌂</Icon><span className="sidebar-label">Home</span></button>
+        <button className={view === "library" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("library")} title="Library" aria-label="Library"><Icon>▤</Icon><span className="sidebar-label">Library</span></button>
+        <button className={view === "notes" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("notes")} title="Notes" aria-label="Notes"><Icon>↗</Icon><span className="sidebar-label">Notes</span></button>
+        <button className={view === "cards" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("cards")} title="Cards" aria-label="Cards"><Icon>◇</Icon><span className="sidebar-label">Cards</span></button>
       </nav>
 
       <div className="sidebar-section">
