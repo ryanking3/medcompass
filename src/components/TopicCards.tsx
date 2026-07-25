@@ -5,15 +5,7 @@ import type { FlashcardKind, StudyDocument, StudyFlashcard, StudyTopic } from ".
 
 type CardDraft = Pick<StudyFlashcard, "kind" | "front" | "back" | "isKept" | "sourceDocumentId" | "sourcePageStart" | "sourcePageEnd">;
 
-type TopicCardsProps = {
-  topic: StudyTopic | null;
-  cards: StudyFlashcard[];
-  documents: StudyDocument[];
-  onBack: () => void;
-  onCardCreated: (card: StudyFlashcard) => void;
-  onCardUpdated: (card: StudyFlashcard) => void;
-  onCardDeleted: (cardId: string) => void;
-};
+type TopicCardsProps = { topic: StudyTopic | null; cards: StudyFlashcard[]; documents: StudyDocument[]; onBack: () => void; onCardCreated: (card: StudyFlashcard) => void; onCardUpdated: (card: StudyFlashcard) => void; onCardDeleted: (cardId: string) => void; };
 
 export function TopicCards({ topic, cards, documents, onBack, onCardCreated, onCardUpdated, onCardDeleted }: TopicCardsProps) {
   const topicCards = useMemo(() => topic ? cards.filter((card) => card.topicId === topic.id) : [], [cards, topic]);
@@ -23,129 +15,60 @@ export function TopicCards({ topic, cards, documents, onBack, onCardCreated, onC
   const [feedback, setFeedback] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-
   const activeCardId = topicCards.some((card) => card.id === selectedCardId) ? selectedCardId : topicCards[0]?.id ?? null;
   const selectedCard = topicCards.find((card) => card.id === activeCardId) ?? null;
-  const draft = selectedCard ? drafts[selectedCard.id] ?? {
-    kind: selectedCard.kind,
-    front: selectedCard.front,
-    back: selectedCard.back,
-    isKept: selectedCard.isKept,
-    sourceDocumentId: selectedCard.sourceDocumentId,
-    sourcePageStart: selectedCard.sourcePageStart,
-    sourcePageEnd: selectedCard.sourcePageEnd,
-  } : null;
+  const draft = selectedCard ? drafts[selectedCard.id] ?? { kind: selectedCard.kind, front: selectedCard.front, back: selectedCard.back, isKept: selectedCard.isKept, sourceDocumentId: selectedCard.sourceDocumentId, sourcePageStart: selectedCard.sourcePageStart, sourcePageEnd: selectedCard.sourcePageEnd } : null;
   const retainedCount = topicCards.filter((card) => card.isKept).length;
 
-  function updateDraft(change: Partial<CardDraft>) {
-    if (!selectedCard) return;
-    setDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [selectedCard.id]: { ...(currentDrafts[selectedCard.id] ?? draft!), ...change },
-    }));
-  }
-
-  function clearDraft(cardId: string) {
-    setDrafts((currentDrafts) => {
-      const remainingDrafts = { ...currentDrafts };
-      delete remainingDrafts[cardId];
-      return remainingDrafts;
-    });
-  }
+  function updateDraft(change: Partial<CardDraft>) { if (!selectedCard || !draft) return; setDrafts((currentDrafts) => ({ ...currentDrafts, [selectedCard.id]: { ...(currentDrafts[selectedCard.id] ?? draft), ...change } })); }
+  function clearDraft(cardId: string) { setDrafts((currentDrafts) => { const remainingDrafts = { ...currentDrafts }; delete remainingDrafts[cardId]; return remainingDrafts; }); }
 
   async function createCard() {
     if (!topic || isSaving) return;
-    setIsSaving(true);
-    setFeedback("");
-    const response = await fetch("/api/flashcards", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topicId: topic.id, kind: "basic", front: "New question", back: "Add your answer", sourceDocumentId: null, sourcePageStart: null, sourcePageEnd: null }),
-    });
-    const result = await response.json().catch(() => ({}));
-    setIsSaving(false);
-    if (!response.ok) {
-      setFeedback(result.error ?? "We couldn't create a card. Please try again.");
-      return;
-    }
-    const card = result.card as StudyFlashcard;
-    onCardCreated(card);
-    setSelectedCardId(card.id);
+    setIsSaving(true); setFeedback("");
+    const response = await fetch("/api/flashcards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topicId: topic.id, kind: "basic", front: "New question", back: "Add your answer", sourceDocumentId: null, sourcePageStart: null, sourcePageEnd: null }) });
+    const result = await response.json().catch(() => ({})); setIsSaving(false);
+    if (!response.ok) return setFeedback(result.error ?? "We couldn't create a card. Please try again.");
+    const card = result.card as StudyFlashcard; onCardCreated(card); setSelectedCardId(card.id);
   }
 
   async function saveCard() {
     if (!selectedCard || !draft || !draft.front.trim() || !draft.back.trim() || isSaving) return;
-    setIsSaving(true);
-    setFeedback("");
-    const response = await fetch(`/api/flashcards/${selectedCard.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
-    });
-    const result = await response.json().catch(() => ({}));
-    setIsSaving(false);
-    if (!response.ok) {
-      setFeedback(result.error ?? "We couldn't save that card. Please try again.");
-      return;
-    }
-    onCardUpdated(result.card as StudyFlashcard);
-    clearDraft(selectedCard.id);
-    setFeedback("Saved");
+    setIsSaving(true); setFeedback("");
+    const response = await fetch(`/api/flashcards/${selectedCard.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) });
+    const result = await response.json().catch(() => ({})); setIsSaving(false);
+    if (!response.ok) return setFeedback(result.error ?? "We couldn't save that card. Please try again.");
+    onCardUpdated(result.card as StudyFlashcard); clearDraft(selectedCard.id); setFeedback("Saved");
   }
 
   async function deleteCard() {
     if (!selectedCard || isSaving) return;
-    setIsSaving(true);
-    setFeedback("");
+    setIsSaving(true); setFeedback("");
     const response = await fetch(`/api/flashcards/${selectedCard.id}`, { method: "DELETE" });
-    const result = await response.json().catch(() => ({}));
-    setIsSaving(false);
-    if (!response.ok) {
-      setFeedback(result.error ?? "We couldn't delete that card. Please try again.");
-      return;
-    }
-    onCardDeleted(selectedCard.id);
-    clearDraft(selectedCard.id);
-    setSelectedCardId(null);
+    const result = await response.json().catch(() => ({})); setIsSaving(false);
+    if (!response.ok) return setFeedback(result.error ?? "We couldn't delete that card. Please try again.");
+    onCardDeleted(selectedCard.id); clearDraft(selectedCard.id); setSelectedCardId(null);
   }
 
   async function exportCards() {
     if (!topic || !retainedCount || isExporting) return;
-    setIsExporting(true);
-    setFeedback("");
+    setIsExporting(true); setFeedback("");
     const response = await fetch(`/api/flashcards/export?topicId=${encodeURIComponent(topic.id)}`);
-    if (!response.ok) {
-      const result = await response.json().catch(() => ({}));
-      setFeedback(result.error ?? "We couldn't export these cards. Please try again.");
-      setIsExporting(false);
-      return;
-    }
-    const fileUrl = URL.createObjectURL(await response.blob());
-    const link = document.createElement("a");
-    link.href = fileUrl;
-    link.download = `${topic.name}-anki.csv`;
-    link.click();
-    URL.revokeObjectURL(fileUrl);
-    setIsExporting(false);
-    setFeedback("CSV downloaded — import it in Anki.");
+    if (!response.ok) { const result = await response.json().catch(() => ({})); setFeedback(result.error ?? "We couldn't export these cards. Please try again."); setIsExporting(false); return; }
+    const fileUrl = URL.createObjectURL(await response.blob()); const link = document.createElement("a"); link.href = fileUrl; link.download = `${topic.name}-anki.csv`; link.click(); URL.revokeObjectURL(fileUrl); setIsExporting(false); setFeedback("CSV downloaded — import it in Anki.");
   }
 
-  if (!topic) {
-    return <div className="cards-empty"><p className="eyebrow">Flashcards</p><h1>Choose a topic first</h1><p>Cards remain connected to the topic and sources they came from.</p><button className="button primary" onClick={onBack}>Return to topic</button></div>;
-  }
+  if (!topic) return <EmptyCards onBack={onBack} />;
 
-  return <div className="cards-workspace">
-    <header className="cards-header"><button className="back-link" onClick={onBack}>← <span>{topic.name}</span></button><div><p className="eyebrow">Topic cards</p><h1>Review and keep the useful ones</h1></div><button className="button primary" onClick={createCard} disabled={isSaving}>+ New card</button></header>
-    <div className="cards-layout">
-      <aside className="card-list"><p className="eyebrow">{topic.name}</p>{topicCards.length ? topicCards.map((card, index) => <button key={card.id} className={card.id === activeCardId ? "saved-card active" : "saved-card"} onClick={() => setSelectedCardId(card.id)}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{card.front}</strong><small>{card.isKept ? "Kept for Anki" : "Draft card"}</small></div></button>) : <p className="card-list-empty">Create your first card for this topic.</p>}</aside>
-      <section className="card-editor">
-        {selectedCard && draft ? <><div className="card-toolbar"><span>{feedback || "Edit before keeping"}</span><label className="keep-toggle"><input type="checkbox" checked={draft.isKept} onChange={(event) => updateDraft({ isKept: event.target.checked })} /> Keep for Anki</label><button className="text-button" onClick={saveCard} disabled={!draft.front.trim() || !draft.back.trim() || isSaving}>{isSaving ? "Saving…" : "Save card"}</button></div><div className="card-form-head"><label>Type<select value={draft.kind} onChange={(event) => updateDraft({ kind: event.target.value as FlashcardKind })}><option value="basic">Basic question and answer</option><option value="cloze">Cloze deletion</option></select></label><span>{draft.isKept ? "This card will be included in export." : "Keep it once it is worth revising."}</span></div><label className="card-field"><span>{draft.kind === "cloze" ? "Text with cloze markers" : "Front"}</span><textarea value={draft.front} onChange={(event) => updateDraft({ front: event.target.value })} placeholder={draft.kind === "cloze" ? "e.g. The {{c1::aortic valve}} opens during ventricular ejection." : "Ask one clear question"} /></label><label className="card-field"><span>{draft.kind === "cloze" ? "Extra explanation" : "Back"}</span><textarea value={draft.back} onChange={(event) => updateDraft({ back: event.target.value })} placeholder="Write a concise answer or explanation" /></label><div className="card-actions"><button className="button ghost danger" onClick={deleteCard} disabled={isSaving}>Delete card</button><button className="button dark" onClick={() => updateDraft({ isKept: !draft.isKept })}>{draft.isKept ? "Move to drafts" : "Keep this card"}</button></div></> : <div className="editor-empty"><h2>No card selected</h2><p>Create a card to begin.</p></div>}
-      </section>
-      <aside className="card-tools"><p className="eyebrow">Source link</p><h2>Keep cards grounded</h2>{selectedCard && draft ? topicDocuments.length ? <><label>Source<select value={draft.sourceDocumentId ?? ""} onChange={(event) => updateDraft({ sourceDocumentId: event.target.value || null })}><option value="">No source link</option>{topicDocuments.map((document) => <option key={document.id} value={document.id}>{document.title}</option>)}</select></label><div className="page-inputs"><label>Start page<input type="number" min="1" value={draft.sourcePageStart ?? ""} onChange={(event) => updateDraft({ sourcePageStart: event.target.value ? Number(event.target.value) : null })} /></label><label>End page<input type="number" min="1" value={draft.sourcePageEnd ?? ""} onChange={(event) => updateDraft({ sourcePageEnd: event.target.value ? Number(event.target.value) : null })} /></label></div><p className="source-help">Use the exact page where you learned this fact.</p></> : <p className="tool-empty">Upload a PDF and link it to <strong>{topic.name}</strong> to cite it here.</p> : <p className="tool-empty">Create a card before linking a source.</p>}</aside>
-    </div>
-    <footer className="export-bar"><span><strong>{retainedCount} kept {retainedCount === 1 ? "card" : "cards"}</strong> &nbsp; Export creates a standard CSV for Anki’s import screen.</span><button className="button primary" onClick={exportCards} disabled={!retainedCount || isExporting}>{isExporting ? "Preparing export…" : "Export kept cards →"}</button></footer>
+  return <div className="cards-page">
+    <header className="cards-page-header"><div><button className="back-link" onClick={onBack}>← <span>{topic.name}</span></button><p className="eyebrow">Topic cards</p><h1>Small cards. Strong recall.</h1><p>Review each card before it becomes part of your Anki deck.</p></div><button className="button primary" onClick={createCard} disabled={isSaving}>+ New card</button></header>
+    <div className="cards-shell"><aside className="cards-rail"><div className="rail-heading"><div><p className="eyebrow">Card queue</p><strong>{topicCards.length}</strong></div><button className="rail-add" onClick={createCard} disabled={isSaving} aria-label="Create new card">+</button></div>{topicCards.length ? <div className="card-list">{topicCards.map((card, index) => <button key={card.id} className={card.id === activeCardId ? "card-list-item active" : "card-list-item"} onClick={() => setSelectedCardId(card.id)}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{card.front}</strong><small>{card.isKept ? "Kept for Anki" : "Draft"}</small></div></button>)}</div> : <div className="rail-empty"><span>◇</span><p>Your cards will appear here.</p></div>}</aside>
+      <main className="card-editor-wrap">{selectedCard && draft ? <><section className="card-paper"><div className="card-paper-toolbar"><span>{feedback || "Edit before keeping"}</span><div><label className="keep-toggle"><input type="checkbox" checked={draft.isKept} onChange={(event) => updateDraft({ isKept: event.target.checked })} /> Keep for Anki</label><button className="button dark compact-button" onClick={saveCard} disabled={!draft.front.trim() || !draft.back.trim() || isSaving}>{isSaving ? "Saving…" : "Save card"}</button></div></div><div className="card-type-row"><label>Card type<select value={draft.kind} onChange={(event) => updateDraft({ kind: event.target.value as FlashcardKind })}><option value="basic">Basic</option><option value="cloze">Cloze</option></select></label><p>{draft.isKept ? "Included in the next Anki export." : "Keep it only if you would revise it."}</p></div><label className="card-field"><span>{draft.kind === "cloze" ? "Text with cloze markers" : "Question"}</span><textarea value={draft.front} onChange={(event) => updateDraft({ front: event.target.value })} placeholder={draft.kind === "cloze" ? "e.g. The {{c1::aortic valve}} opens during ventricular ejection." : "Ask one clear question"} /></label><label className="card-field"><span>{draft.kind === "cloze" ? "Extra explanation" : "Answer"}</span><textarea value={draft.back} onChange={(event) => updateDraft({ back: event.target.value })} placeholder="Write a concise answer or explanation" /></label><div className="card-actions"><button className="text-button danger-text" onClick={deleteCard} disabled={isSaving}>Delete card</button><button className="button ghost" onClick={() => updateDraft({ isKept: !draft.isKept })}>{draft.isKept ? "Move to drafts" : "Keep this card"}</button></div></section><section className="card-source-panel"><div><p className="eyebrow">Source reference</p><h2>Optional, but valuable</h2><p>Link the exact page that supports this card.</p></div>{topicDocuments.length ? <div className="card-source-form"><label>Source<select value={draft.sourceDocumentId ?? ""} onChange={(event) => updateDraft({ sourceDocumentId: event.target.value || null })}><option value="">No source link</option>{topicDocuments.map((document) => <option key={document.id} value={document.id}>{document.title}</option>)}</select></label><label>Page<input type="number" min="1" value={draft.sourcePageStart ?? ""} onChange={(event) => updateDraft({ sourcePageStart: event.target.value ? Number(event.target.value) : null })} placeholder="e.g. 12" /></label><label>To page<input type="number" min="1" value={draft.sourcePageEnd ?? ""} onChange={(event) => updateDraft({ sourcePageEnd: event.target.value ? Number(event.target.value) : null })} placeholder="Optional" /></label></div> : <div className="source-empty"><strong>Add a source first</strong><p>Upload a PDF and link it to {topic.name} to cite it here.</p></div>}</section></> : <div className="editor-empty"><span>◇</span><h2>No card selected</h2><p>Create a card to begin.</p><button className="button primary" onClick={createCard}>Create card</button></div>}</main></div>
+    <section className="export-panel"><div><p className="eyebrow">Anki export</p><h2>{retainedCount ? `${retainedCount} kept ${retainedCount === 1 ? "card" : "cards"}` : "Keep cards that are worth revising"}</h2><p>Export creates a simple CSV for Anki’s import screen.</p></div><button className="button primary" onClick={exportCards} disabled={!retainedCount || isExporting}>{isExporting ? "Preparing export…" : "Export kept cards →"}</button></section>
     <style jsx>{`
-      .cards-workspace { min-height: 100vh; padding-bottom: 78px; background: #f8f8f4; }.cards-header { height: 128px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 22px 58px; background: #fffefa; border-bottom: 1px solid #dde2df; }.cards-header > div { text-align: center; }.cards-header h1 { margin: 0; font: 29px Georgia, serif; font-weight: 500; letter-spacing: -.5px; }.cards-header .button { justify-self: end; }.cards-layout { min-height: calc(100vh - 206px); display: grid; grid-template-columns: 240px minmax(360px, 1fr) 270px; }.card-list { padding: 24px 16px; border-right: 1px solid #dde2df; background: #f4f6f2; }.card-list-empty, .tool-empty { color: #718078; font-size: 11px; line-height: 1.5; }.saved-card { width: 100%; display: flex; gap: 9px; align-items: flex-start; border: 0; border-radius: 7px; padding: 11px; background: transparent; text-align: left; color: #3e4c4c; }.saved-card:hover { background: #e7ece8; }.saved-card.active { background: #dceadf; }.saved-card > span { color: #84918b; font: 12px Georgia, serif; }.saved-card strong { display: block; max-height: 32px; overflow: hidden; font-size: 11px; line-height: 1.35; }.saved-card small { display: block; margin-top: 4px; color: #718078; font-size: 10px; }.card-editor { padding: 24px clamp(28px, 5vw, 70px); background: #fffefa; }.card-toolbar { display: flex; align-items: center; gap: 15px; color: #78857f; font-size: 11px; padding-bottom: 18px; border-bottom: 1px solid #e8ebe7; }.card-toolbar .text-button { margin-left: auto; }.keep-toggle { display: flex; gap: 5px; align-items: center; color: #36715c; font-weight: 700; }.keep-toggle input { accent-color: #437967; }.card-form-head { display: flex; justify-content: space-between; align-items: end; gap: 15px; margin: 25px 0 18px; color: #78857f; font-size: 10px; }.card-form-head label { display: grid; gap: 5px; color: #64736d; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }.card-form-head select { border: 1px solid #d8ded9; border-radius: 6px; padding: 7px; background: white; color: #354441; font-size: 11px; font-weight: 400; letter-spacing: normal; text-transform: none; }.card-field { display: grid; gap: 8px; margin-bottom: 22px; }.card-field span { color: #6b7a75; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }.card-field textarea { min-height: 124px; width: 100%; resize: vertical; padding: 14px; border: 1px solid #d8ded9; border-radius: 7px; color: #2b3838; background: white; font: 14px/1.55 Georgia, serif; outline-color: #497970; }.card-actions { display: flex; justify-content: space-between; padding-top: 18px; border-top: 1px solid #e8ebe7; }.card-tools { padding: 27px 18px; border-left: 1px solid #dde2df; background: #f7f8f5; }.card-tools h2 { margin: 0 0 15px; font: 20px Georgia, serif; font-weight: 500; }.card-tools label { display: grid; gap: 6px; margin-top: 12px; color: #66756f; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }.card-tools select, .card-tools input { width: 100%; border: 1px solid #d8ded9; border-radius: 6px; padding: 8px; background: white; color: #354441; font-size: 11px; font-weight: 400; letter-spacing: normal; text-transform: none; outline-color: #497970; }.page-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }.source-help { margin: 14px 0 0; color: #78857f; font-size: 10px; line-height: 1.45; }.editor-empty { display: grid; min-height: 340px; place-items: center; align-content: center; color: #78857f; text-align: center; }.editor-empty h2 { margin: 0; font: 24px Georgia, serif; font-weight: 500; }.editor-empty p { font-size: 12px; }.export-bar { position: fixed; bottom: 0; left: 248px; right: 0; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px max(58px, calc((100vw - 1130px) / 2)); border-top: 1px solid #dce2dc; background: rgba(255,254,250,.95); backdrop-filter: blur(10px); color: #687771; font-size: 12px; }.export-bar strong { color: #354541; }.cards-empty { min-height: 100vh; display: grid; place-content: center; justify-items: center; padding: 32px; text-align: center; background: #f8f8f4; }.cards-empty h1 { margin: 0; font: 32px Georgia, serif; font-weight: 500; }.cards-empty > p:not(.eyebrow) { max-width: 340px; color: #6b7974; font-size: 13px; line-height: 1.5; }.cards-empty .button { margin-top: 9px; } @media (max-width: 950px) { .cards-header { padding: 22px 30px; }.cards-layout { grid-template-columns: 200px minmax(300px, 1fr); }.card-tools { display: none; }.export-bar { left: 0; padding: 13px 30px; } } @media (max-width: 700px) { .cards-header { height: auto; min-height: 82px; grid-template-columns: 1fr auto; padding: 20px; }.cards-header > div { display: none; }.cards-layout { min-height: calc(100vh - 150px); grid-template-columns: 1fr; }.card-list { display: none; }.card-editor { padding: 22px; }.card-form-head { display: grid; }.card-toolbar { flex-wrap: wrap; }.card-toolbar .text-button { margin-left: 0; }.export-bar { left: 0; padding: 12px 18px; }.export-bar span { display: none; } }
+      .cards-page { min-height: 100vh; background: #f6f7f3; }.cards-page-header { max-width: 1120px; display: flex; justify-content: space-between; gap: 30px; align-items: flex-start; margin: 0 auto; padding: 52px 42px 34px; }.cards-page-header h1 { margin: 7px 0 7px; color: #202b2e; font: 43px Georgia, serif; font-weight: 500; letter-spacing: -1.4px; }.cards-page-header > div > p:not(.eyebrow) { max-width: 540px; margin: 0; color: #6a7874; font-size: 13px; line-height: 1.5; }.cards-page-header .button { margin-top: 28px; }.cards-shell { max-width: 1120px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px; margin: 0 auto; padding: 0 42px; }.cards-rail, .card-paper, .card-source-panel, .export-panel { border: 1px solid #dfe6df; border-radius: 12px; background: #fffefa; }.cards-rail { align-self: start; padding: 15px 10px; }.rail-heading { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 12px; border-bottom: 1px solid #edf0ec; }.rail-heading .eyebrow { margin-bottom: 3px; }.rail-heading strong { color: #425950; font: 18px Georgia, serif; }.rail-add { display: grid; place-items: center; width: 25px; height: 25px; border: 0; border-radius: 50%; color: #2d6f59; background: #e4f0e6; font-size: 18px; }.card-list { display: grid; gap: 3px; margin-top: 10px; }.card-list-item { display: flex; gap: 9px; align-items: flex-start; width: 100%; border: 0; border-radius: 7px; padding: 10px; background: transparent; color: #40504c; text-align: left; }.card-list-item:hover { background: #f1f5f1; }.card-list-item.active { background: #e2eee5; }.card-list-item > span { color: #84918b; font: 12px Georgia, serif; }.card-list-item strong { display: block; max-height: 32px; overflow: hidden; font-size: 11px; line-height: 1.35; }.card-list-item small { display: block; margin-top: 4px; color: #78857f; font-size: 10px; }.rail-empty { padding: 22px 10px 13px; color: #7e8a84; text-align: center; font-size: 11px; line-height: 1.5; }.rail-empty span { display: grid; place-items: center; width: 28px; height: 28px; margin: 0 auto 8px; border-radius: 50%; color: #477a66; background: #e9f3ea; }.rail-empty p { margin: 0; }.card-paper { padding: 24px clamp(24px, 5vw, 58px) 28px; }.card-paper-toolbar { display: flex; justify-content: space-between; align-items: center; color: #7b8781; font-size: 11px; }.card-paper-toolbar > div { display: flex; align-items: center; gap: 10px; }.compact-button { padding: 8px 11px; font-size: 11px; }.keep-toggle { display: flex; align-items: center; gap: 5px; color: #39765e; font-size: 11px; font-weight: 700; }.keep-toggle input { accent-color: #39765e; }.card-type-row { display: flex; justify-content: space-between; align-items: end; gap: 15px; margin: 25px 0 18px; }.card-type-row label { display: grid; gap: 5px; color: #66756f; font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }.card-type-row select { border: 1px solid #d8ded9; border-radius: 6px; padding: 7px; background: white; color: #354441; font-size: 11px; font-weight: 400; letter-spacing: normal; text-transform: none; }.card-type-row p { margin: 0; color: #78857f; font-size: 11px; }.card-field { display: grid; gap: 8px; margin-bottom: 20px; }.card-field span { color: #6b7a75; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }.card-field textarea { min-height: 116px; width: 100%; resize: vertical; padding: 14px; border: 1px solid #d8ded9; border-radius: 8px; color: #2b3838; background: white; font: 14px/1.55 Georgia, serif; outline-color: #497970; }.card-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 17px; border-top: 1px solid #e8ebe7; }.danger-text { color: #a04c4c; }.card-source-panel { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(0, 1.2fr); gap: 22px; margin-top: 15px; padding: 20px 22px; background: #f0f6f1; border-color: #d9e7dc; }.card-source-panel h2 { margin: 0 0 7px; font: 21px Georgia, serif; font-weight: 500; }.card-source-panel > div > p:not(.eyebrow) { margin: 0; color: #64746c; font-size: 11px; line-height: 1.5; }.card-source-form { display: grid; grid-template-columns: minmax(150px, 1fr) 78px 78px; gap: 9px; align-items: end; }.card-source-form label { display: grid; gap: 5px; color: #66756f; font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }.card-source-form select, .card-source-form input { width: 100%; border: 1px solid #d4dfd5; border-radius: 6px; padding: 8px; background: white; color: #354441; font-size: 11px; font-weight: 400; letter-spacing: normal; text-transform: none; outline-color: #497970; }.source-empty { color: #6a7b73; font-size: 11px; line-height: 1.5; }.source-empty p { margin: 4px 0 0; }.export-panel { max-width: 1120px; display: flex; justify-content: space-between; align-items: center; gap: 25px; margin: 18px auto 0; padding: 22px 24px; background: #263d3d; border-color: #263d3d; color: #f4f7f4; }.export-panel .eyebrow { color: #a7c1b5; }.export-panel h2 { margin: 0; font: 21px Georgia, serif; font-weight: 500; }.export-panel p:not(.eyebrow) { margin: 6px 0 0; color: #ced8d4; font-size: 11px; }.export-panel .primary { color: #16322d; background: #a9d9bd; }.editor-empty { display: grid; min-height: 430px; place-items: center; align-content: center; padding: 35px; border: 1px dashed #c8d5ca; border-radius: 12px; background: #fbfcf9; color: #73817b; text-align: center; }.editor-empty > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; color: #39765e; background: #e3f0e5; }.editor-empty h2 { margin: 15px 0 5px; color: #354540; font: 25px Georgia, serif; font-weight: 500; }.editor-empty p { margin: 0 0 17px; font-size: 12px; }.cards-empty { min-height: 100vh; display: grid; place-content: center; justify-items: center; padding: 32px; text-align: center; background: #f6f7f3; }.cards-empty h1 { margin: 0; font: 32px Georgia, serif; font-weight: 500; }.cards-empty > p:not(.eyebrow) { max-width: 340px; color: #6b7974; font-size: 13px; line-height: 1.5; }.cards-empty .button { margin-top: 9px; } @media (max-width: 780px) { .cards-page-header, .cards-shell { padding-left: 22px; padding-right: 22px; }.cards-shell { grid-template-columns: 1fr; }.cards-rail { display: none; }.card-source-panel { grid-template-columns: 1fr; }.export-panel { margin-left: 22px; margin-right: 22px; } } @media (max-width: 560px) { .cards-page-header { display: grid; padding-top: 31px; }.cards-page-header h1 { font-size: 36px; }.cards-page-header .button { justify-self: start; margin-top: 5px; }.card-paper { padding: 19px 20px 25px; }.card-paper-toolbar, .card-paper-toolbar > div { align-items: flex-start; flex-wrap: wrap; }.card-type-row { display: grid; }.card-source-form { grid-template-columns: 1fr 1fr; }.card-source-form > label:first-child { grid-column: span 2; }.export-panel { align-items: flex-start; flex-direction: column; }.export-panel .button { width: 100%; } }
     `}</style>
   </div>;
 }
+
+function EmptyCards({ onBack }: { onBack: () => void }) { return <div className="cards-empty"><p className="eyebrow">Flashcards</p><h1>Choose a topic first</h1><p>Cards remain connected to the topic and sources they came from.</p><button className="button primary" onClick={onBack}>Return to topic</button></div>; }
