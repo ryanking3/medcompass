@@ -94,7 +94,7 @@ export default async function Home() {
     back: card.back,
     isKept: card.is_kept,
     sourceDocumentId: card.source_document_id,
-    sourceDocumentTitle: card.documents[0]?.title ?? null,
+    sourceDocumentTitle: card.documents?.[0]?.title ?? null,
     sourcePageStart: card.source_page_start,
     sourcePageEnd: card.source_page_end,
     updatedAt: card.updated_at,
