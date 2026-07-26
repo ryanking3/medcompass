@@ -222,13 +222,15 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
       </div>
       <style jsx>{`
         .document-reader {
-          min-height: 100vh;
+          height: 100vh;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
           background: #edf0ec;
         }
 
         .document-reader-header {
+          flex: 0 0 auto;
           min-height: 66px;
           display: grid;
           grid-template-columns: 1fr minmax(0, 420px) 1fr;
@@ -340,9 +342,11 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           min-height: 0;
           display: grid;
           grid-template-columns: 230px minmax(420px, 1fr) 315px;
+          overflow: hidden;
         }
 
         .document-reader-aside {
+          min-height: 0;
           padding: 24px 18px;
           background: #f7f8f5;
           border-right: 1px solid #dde2df;
@@ -645,6 +649,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
         }
 
         .document-reader-next {
+          min-height: 0;
           padding: 26px 20px;
           background: #fffefa;
           border-left: 1px solid #dde2df;
