@@ -46,6 +46,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
   const [copiedCitation, setCopiedCitation] = useState(false);
+  const [sourcePanelOpen, setSourcePanelOpen] = useState(true);
   const canvasRef = useRef<HTMLElement | null>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const scrollFrameRef = useRef<number | null>(null);
@@ -150,6 +151,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
         <button className="back-link" onClick={onBack}>← <span>Library</span></button>
         <div className="document-reader-title"><strong>{document.title}</strong><span>Private PDF · {status.label}</span></div>
         <div className="reader-header-actions">
+          <button className="reader-panel-toggle" onClick={() => setSourcePanelOpen((open) => !open)}>{sourcePanelOpen ? "Hide source" : "Show source"}</button>
           <button className="reader-icon-button" onClick={() => goToPage(visiblePage - 1)} disabled={visiblePage <= 1}>‹</button>
           <label className="reader-page-control"><span>Page</span><input type="number" min="1" max={pdfPageCount ?? undefined} value={visiblePage} onChange={(event) => goToPage(Number(event.target.value))} />{pdfPageCount && <small>/ {pdfPageCount}</small>}</label>
           <button className="reader-icon-button" onClick={() => goToPage(visiblePage + 1)} disabled={Boolean(pdfPageCount && visiblePage >= pdfPageCount)}>›</button>
@@ -158,8 +160,8 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
         </div>
       </header>
 
-      <div className="document-reader-layout">
-        <aside className="document-reader-aside">
+      <div className={sourcePanelOpen ? "document-reader-layout" : "document-reader-layout source-panel-closed"}>
+        {sourcePanelOpen && <aside className="document-reader-aside">
           <p className="eyebrow">Source</p>
           <div className="reader-file-icon">PDF</div>
           <strong>{document.title}</strong>
@@ -182,7 +184,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
               <p className="page-map-copy">{pdfPageCount ? `${pdfPageCount - visiblePage} ${pdfPageCount - visiblePage === 1 ? "page" : "pages"} left in this source.` : "Reading position will update as you scroll."}</p>
             </> : <small>Open the PDF to build a page map.</small>}
           </div>
-        </aside>
+        </aside>}
 
         <main className="document-reader-canvas" ref={canvasRef} onScroll={trackScrollPosition}>
           {!signedUrl && !error && <div className="reader-loading"><div /><h1>Opening your PDF</h1><p>Generating a secure, temporary reading link.</p></div>}
@@ -204,7 +206,6 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
                 }}
               />
             </div>
-            <div className="reader-floating-tools"><span>{pdfPageCount ? `Page ${visiblePage} of ${pdfPageCount}` : `Page ${visiblePage}`}</span><button onClick={copyPageCitation}>{copiedCitation ? "Copied" : "Copy page citation"}</button></div>
           </>}
         </main>
 
@@ -219,7 +220,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           {preparationError && <p className="reader-preparation-error" role="alert">{preparationError}</p>}
           {extractionReady && <div className="reader-ready-card"><strong>Citation layer ready</strong><p>Questions, notes, and flashcards can now point back to page numbers from this source.</p></div>}
           <div className="reader-tool-list">
-            <button onClick={copyPageCitation}><span>⌘</span><div><strong>Copy current citation</strong><small>{document.title}, p. {visiblePage}</small></div></button>
+            <button onClick={copyPageCitation}><span>⌘</span><div><strong>{copiedCitation ? "Citation copied" : "Copy current citation"}</strong><small>{document.title}, p. {visiblePage}</small></div></button>
             <button disabled><span>↗</span><div><strong>Create note from selection</strong><small>Coming with notes polish</small></div></button>
             <button disabled><span>✦</span><div><strong>Ask this source</strong><small>Coming with AI integration</small></div></button>
           </div>
@@ -283,17 +284,27 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           text-decoration: underline;
         }
 
+        .reader-panel-toggle,
         .reader-icon-button,
         .reader-zoom button {
           display: grid;
           place-items: center;
-          width: 29px;
           height: 29px;
           border: 1px solid #d9e1da;
           border-radius: 7px;
           color: #49645d;
           background: #f8faf7;
           font-weight: 700;
+        }
+
+        .reader-panel-toggle {
+          padding: 0 9px;
+          font-size: 11px;
+        }
+
+        .reader-icon-button,
+        .reader-zoom button {
+          width: 29px;
         }
 
         .reader-page-control {
@@ -348,6 +359,10 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           display: grid;
           grid-template-columns: 230px minmax(420px, 1fr) 315px;
           overflow: hidden;
+        }
+
+        .document-reader-layout.source-panel-closed {
+          grid-template-columns: minmax(420px, 1fr) 315px;
         }
 
         .document-reader-aside {
@@ -591,33 +606,6 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           transition: width 180ms ease;
         }
 
-        .reader-floating-tools {
-          position: sticky;
-          bottom: 18px;
-          z-index: 3;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          width: max-content;
-          margin: -64px auto 18px;
-          padding: 8px 10px;
-          border: 1px solid rgba(232, 238, 232, .35);
-          border-radius: 999px;
-          color: #eef6f0;
-          background: rgba(30, 52, 52, .86);
-          box-shadow: 0 8px 22px rgba(25, 38, 36, .22);
-          font-size: 11px;
-          backdrop-filter: blur(8px);
-        }
-
-        .reader-floating-tools button {
-          border: 0;
-          color: #dcefe2;
-          background: transparent;
-          font-size: 11px;
-          font-weight: 700;
-        }
-
         .reader-loading {
           position: absolute;
           inset: 0;
@@ -827,6 +815,10 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
             grid-template-columns: 190px minmax(340px, 1fr) 285px;
           }
 
+          .document-reader-layout.source-panel-closed {
+            grid-template-columns: minmax(340px, 1fr) 285px;
+          }
+
           .reader-header-actions {
             gap: 5px;
           }
@@ -849,6 +841,10 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
 
           .document-reader-layout {
             grid-template-columns: 180px minmax(340px, 1fr);
+          }
+
+          .document-reader-layout.source-panel-closed {
+            grid-template-columns: minmax(340px, 1fr);
           }
 
           .document-reader-next {
@@ -888,10 +884,6 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
             padding: 24px 14px 76px;
           }
 
-          .reader-floating-tools {
-            width: calc(100% - 28px);
-            justify-content: space-between;
-          }
         }
       `}</style>
     </div>
