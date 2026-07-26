@@ -179,9 +179,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
             </div>
             {pdfPageCount ? <>
               <div className="page-map-progress"><span style={{ width: `${pageProgress ?? 0}%` }} /></div>
-              <div className="page-map-grid" aria-label="PDF page navigation">
-                {pdfPages.map((page) => <button key={page} className={page === visiblePage ? "active" : ""} onClick={() => goToPage(page)} aria-current={page === visiblePage ? "page" : undefined}>{page}</button>)}
-              </div>
+              <p className="page-map-copy">{pdfPageCount ? `${pdfPageCount - visiblePage} ${pdfPageCount - visiblePage === 1 ? "page" : "pages"} left in this source.` : "Reading position will update as you scroll."}</p>
             </> : <small>Open the PDF to build a page map.</small>}
           </div>
         </aside>
@@ -515,28 +513,11 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           transition: width 180ms ease;
         }
 
-        .page-map-grid {
-          display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
-          gap: 5px;
-        }
-
-        .page-map-grid button {
-          min-width: 0;
-          min-height: 29px;
-          border: 1px solid #dfe6df;
-          border-radius: 7px;
-          color: #61716b;
-          background: #fbfcf9;
+        .page-map-copy {
+          margin: 0;
+          color: #78857f;
           font-size: 10px;
-          font-weight: 700;
-        }
-
-        .page-map-grid button:hover,
-        .page-map-grid button.active {
-          color: #ffffff;
-          background: #497970;
-          border-color: #497970;
+          line-height: 1.45;
         }
 
         .document-reader-canvas {
