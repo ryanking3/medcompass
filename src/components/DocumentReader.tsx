@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
-import type { StudyDocument } from "@/components/types";
+import type { StudyDocument, StudyNote } from "@/components/types";
 
 const PdfContinuousViewer = dynamic(() => import("@/components/PdfContinuousViewer"), {
   ssr: false,
@@ -14,6 +14,8 @@ type DocumentReaderProps = {
   document: StudyDocument;
   onBack: () => void;
   onDocumentUpdated: (document: StudyDocument) => void;
+  onNoteCreated: (note: StudyNote) => void;
+  onOpenNotesForTopic: (topicId: string) => void;
 };
 
 const statusCopy = {
@@ -36,7 +38,13 @@ function pageLabel(pageCount: number | null) {
   return pageCount ? `${pageCount} ${pageCount === 1 ? "page" : "pages"}` : "Page count pending";
 }
 
-export function DocumentReader({ document, onBack, onDocumentUpdated }: DocumentReaderProps) {
+function titleFromSelection(selection: string, fallback: string) {
+  const compactSelection = selection.replace(/\s+/g, " ").trim();
+  if (!compactSelection) return fallback;
+  return compactSelection.length > 72 ? `${compactSelection.slice(0, 69)}…` : compactSelection;
+}
+
+export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCreated, onOpenNotesForTopic }: DocumentReaderProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isPreparing, setIsPreparing] = useState(false);
@@ -47,6 +55,9 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
   const [zoom, setZoom] = useState(100);
   const [copiedCitation, setCopiedCitation] = useState(false);
   const [sourcePanelOpen, setSourcePanelOpen] = useState(true);
+  const [noteTopicId, setNoteTopicId] = useState(document.linkedTopics[0]?.id ?? "");
+  const [isCreatingNote, setIsCreatingNote] = useState(false);
+  const [noteFeedback, setNoteFeedback] = useState("");
   const canvasRef = useRef<HTMLElement | null>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const scrollFrameRef = useRef<number | null>(null);
@@ -57,6 +68,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
   const extractionActive = isPreparing || document.status === "processing";
   const pageProgress = pdfPageCount ? Math.round((visiblePage / pdfPageCount) * 100) : null;
   const pdfPages = Array.from({ length: pdfPageCount ?? 0 }, (_, index) => index + 1);
+  const selectedNoteTopicId = document.linkedTopics.some((topic) => topic.id === noteTopicId) ? noteTopicId : document.linkedTopics[0]?.id ?? "";
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +157,48 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
     }
   }
 
+  async function createNoteFromCurrentPage() {
+    if (!selectedNoteTopicId || isCreatingNote) return;
+    setIsCreatingNote(true);
+    setNoteFeedback("");
+
+    const selection = globalThis.getSelection?.()?.toString().replace(/\s+/g, " ").trim() ?? "";
+    const fallbackTitle = `${document.title}, p. ${visiblePage}`;
+    const noteTitle = titleFromSelection(selection, fallbackTitle);
+    const noteBody = selection ? `${selection}\n\nMy notes:\n` : `Notes from ${document.title}, page ${visiblePage}\n\n`;
+
+    const noteResponse = await fetch("/api/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topicId: selectedNoteTopicId, title: noteTitle, body: noteBody }),
+    });
+    const noteResult = await noteResponse.json().catch(() => ({}));
+
+    if (!noteResponse.ok) {
+      setIsCreatingNote(false);
+      setNoteFeedback(noteResult.error ?? "We couldn't create that note.");
+      return;
+    }
+
+    const note = noteResult.note as StudyNote;
+    const citationResponse = await fetch(`/api/notes/${note.id}/citations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ documentId: document.id, pageStart: visiblePage, pageEnd: visiblePage, excerpt: selection }),
+    });
+    const citationResult = await citationResponse.json().catch(() => ({}));
+    setIsCreatingNote(false);
+
+    if (!citationResponse.ok) {
+      onNoteCreated(note);
+      setNoteFeedback(citationResult.error ?? "Note created, but we couldn't attach the citation.");
+      return;
+    }
+
+    onNoteCreated({ ...note, citations: [citationResult.citation] });
+    onOpenNotesForTopic(selectedNoteTopicId);
+  }
+
   return (
     <div className="document-reader">
       <header className="document-reader-header">
@@ -221,7 +275,12 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           {extractionReady && <div className="reader-ready-card"><strong>Citation layer ready</strong><p>Questions, notes, and flashcards can now point back to page numbers from this source.</p></div>}
           <div className="reader-tool-list">
             <button onClick={copyPageCitation}><span>⌘</span><div><strong>{copiedCitation ? "Citation copied" : "Copy current citation"}</strong><small>{document.title}, p. {visiblePage}</small></div></button>
-            <button disabled><span>↗</span><div><strong>Create note from selection</strong><small>Coming with notes polish</small></div></button>
+            <div className="reader-note-tool">
+              <div className="reader-note-tool-heading"><span>↗</span><div><strong>Create source note</strong><small>{document.linkedTopics.length ? "Highlight text first, or cite the current page." : "Link this source to a topic first."}</small></div></div>
+              {document.linkedTopics.length > 1 && <label>Topic<select value={selectedNoteTopicId} onChange={(event) => setNoteTopicId(event.target.value)}>{document.linkedTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>}
+              <button className="reader-note-action" onClick={createNoteFromCurrentPage} disabled={!selectedNoteTopicId || isCreatingNote}>{isCreatingNote ? "Creating…" : "Create note"}</button>
+              {noteFeedback && <p role="status">{noteFeedback}</p>}
+            </div>
             <button disabled><span>✦</span><div><strong>Ask this source</strong><small>Coming with AI integration</small></div></button>
           </div>
         </aside>
@@ -775,6 +834,75 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           color: #31413e;
           background: #fbfcf9;
           text-align: left;
+        }
+
+        .reader-note-tool {
+          padding: 11px;
+          border: 1px solid #d9e7dc;
+          border-radius: 8px;
+          color: #31413e;
+          background: #f0f7f1;
+        }
+
+        .reader-note-tool-heading {
+          display: flex;
+          gap: 10px;
+          align-items: flex-start;
+        }
+
+        .reader-note-tool-heading > span {
+          display: grid;
+          flex: 0 0 auto;
+          place-items: center;
+          width: 25px;
+          height: 25px;
+          border-radius: 50%;
+          color: #3d796d;
+          background: #dcecdf;
+        }
+
+        .reader-note-tool label {
+          display: grid;
+          gap: 5px;
+          margin-top: 11px;
+          color: #6b7974;
+          font-size: 9px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: .07em;
+        }
+
+        .reader-note-tool select {
+          width: 100%;
+          min-height: 34px;
+          border: 1px solid #d4dfd5;
+          border-radius: 7px;
+          padding: 0 9px;
+          color: #30413d;
+          background: #fffefa;
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: normal;
+          text-transform: none;
+        }
+
+        .reader-tool-list .reader-note-action {
+          justify-content: center;
+          margin-top: 10px;
+          padding: 9px 10px;
+          color: white;
+          background: #27433e;
+          border-color: #27433e;
+          font-size: 11px;
+          font-weight: 800;
+          text-align: center;
+        }
+
+        .reader-note-tool p {
+          margin: 9px 0 0;
+          color: #6c7b75;
+          font-size: 10px;
+          line-height: 1.45;
         }
 
         .reader-tool-list button:disabled {

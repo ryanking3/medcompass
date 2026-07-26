@@ -95,6 +95,15 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
     setView("dashboard");
   };
 
+  const openNotesForTopic = (topicId: string) => {
+    const course = courses.find((entry) => entry.modules.some((module) => module.topics.some((topic) => topic.id === topicId)));
+    const topic = course?.modules.flatMap((module) => module.topics).find((entry) => entry.id === topicId) ?? null;
+    if (!topic) return;
+    setSelectedCourseId(course?.id ?? null);
+    setSelectedTopic(topic);
+    setView("notes");
+  };
+
   const handleTopicCreated = (createdTopic: CreatedTopic) => {
     setCourses((currentCourses) => {
       const existingCourse = currentCourses.find((course) => course.id === createdTopic.course.id);
@@ -129,7 +138,7 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
         {view === "planner" && <StudyPlanner courses={courses} exams={exams} availability={availability} planBlocks={planBlocks} onExamsChange={setExams} onAvailabilityChange={setAvailability} onPlanBlocksChange={setPlanBlocks} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} />}
         {view === "dashboard" && (selectedTopic ? <TopicDashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} documents={documents} notes={notes} flashcards={flashcards} onOpenDocument={openDocument} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} /> : <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} planBlocks={planBlocks} exams={exams} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenPlanner={() => setView("planner")} />)}
-        {view === "reader" && (selectedDocument ? <DocumentReader key={selectedDocument.id} document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />)}
+        {view === "reader" && (selectedDocument ? <DocumentReader key={selectedDocument.id} document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} onNoteCreated={handleNoteCreated} onOpenNotesForTopic={openNotesForTopic} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />)}
         {view === "notes" && <TopicNotes topic={selectedTopic} notes={notes} documents={documents} onBack={() => setView("dashboard")} onNoteCreated={handleNoteCreated} onNoteUpdated={handleNoteUpdated} />}
         {view === "cards" && <TopicCards topic={selectedTopic} cards={flashcards} documents={documents} onBack={() => setView("dashboard")} onCardCreated={handleCardCreated} onCardUpdated={handleCardUpdated} onCardDeleted={handleCardDeleted} />}
         {view === "settings" && <AccountSettings userId={userId} email={accountEmail} fullName={accountFullName} onSignOut={signOut} onProfileUpdated={(nextProfile) => {
