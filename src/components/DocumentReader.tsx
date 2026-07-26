@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
+import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import type { StudyDocument } from "@/components/types";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+const PdfContinuousViewer = dynamic(() => import("@/components/PdfContinuousViewer"), {
+  ssr: false,
+  loading: () => <div className="reader-loading reader-inline"><div /><h1>Rendering your PDF</h1><p>Preparing the page canvas and selectable text layer.</p></div>,
+});
 
 type DocumentReaderProps = {
   document: StudyDocument;
@@ -182,35 +185,19 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           {signedUrl && <>
             <div className="reader-progress-bar"><span style={{ width: `${pageProgress ?? 0}%` }} /></div>
             <div className="pdf-stage">
-              <Document
-                className="pdf-document"
+              <PdfContinuousViewer
                 file={signedUrl}
-                loading={<div className="reader-loading reader-inline"><div /><h1>Rendering your PDF</h1><p>Preparing the page canvas and selectable text layer.</p></div>}
-                error={<div className="reader-loading reader-error reader-inline"><span>!</span><h1>Couldn’t render this PDF</h1><p>{renderError || "The browser could not render this PDF preview. You can still open it in a new tab."}</p></div>}
+                pages={pdfPages}
+                zoom={zoom}
+                renderError={renderError}
                 onLoadSuccess={handlePdfLoaded}
-                onLoadError={(loadError) => setRenderError(loadError.message || "The PDF renderer failed to load this file.")}
-              >
-                {pdfPages.map((pageNumber) => <div
-                  key={pageNumber}
-                  id={`pdf-page-${pageNumber}`}
-                  className="pdf-page-wrap"
-                  ref={(element) => {
+                onLoadError={(message) => setRenderError(message)}
+                onPageRenderError={(message) => setRenderError(message)}
+                registerPageRef={(pageNumber, element) => {
                     if (element) pageRefs.current.set(pageNumber, element);
                     else pageRefs.current.delete(pageNumber);
-                  }}
-                >
-                  <span className="pdf-page-label">Page {pageNumber}</span>
-                  <Page
-                    className="pdf-page"
-                    pageNumber={pageNumber}
-                    scale={zoom / 100}
-                    loading={<div className="reader-page-loading">Loading page {pageNumber}…</div>}
-                    onRenderError={(pageError) => setRenderError(pageError.message || `Page ${pageNumber} could not be rendered.`)}
-                    renderAnnotationLayer
-                    renderTextLayer
-                  />
-                </div>)}
-              </Document>
+                }}
+              />
             </div>
             <div className="reader-floating-tools"><span>{pdfPageCount ? `Page ${visiblePage} of ${pdfPageCount}` : `Page ${visiblePage}`}</span><button onClick={copyPageCitation}>{copiedCitation ? "Copied" : "Copy page citation"}</button></div>
           </>}
