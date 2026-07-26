@@ -56,7 +56,6 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
   const extractionActive = isPreparing || document.status === "processing";
   const pageProgress = pdfPageCount ? Math.round((visiblePage / pdfPageCount) * 100) : null;
   const pdfPages = Array.from({ length: pdfPageCount ?? 0 }, (_, index) => index + 1);
-  const previewPages = Array.from({ length: Math.min(pdfPageCount ?? 0, 8) }, (_, index) => index + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,8 +173,16 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
             {document.linkedTopics.length ? document.linkedTopics.map((topic) => <span key={topic.id}>{topic.name}</span>) : <small>No linked topics yet</small>}
           </div>
           <div className="reader-page-rail">
-            <p className="eyebrow">Page map</p>
-            {previewPages.length ? previewPages.map((page) => <button key={page} className={page === visiblePage ? "active" : ""} onClick={() => goToPage(page)}><i />Page {page}</button>) : <small>Extract pages to build a source map.</small>}
+            <div className="page-map-heading">
+              <div><p className="eyebrow">Page map</p><strong>{pdfPageCount ? `Page ${visiblePage}` : "Loading pages"}</strong></div>
+              {pageProgress !== null && <span>{pageProgress}%</span>}
+            </div>
+            {pdfPageCount ? <>
+              <div className="page-map-progress"><span style={{ width: `${pageProgress ?? 0}%` }} /></div>
+              <div className="page-map-grid" aria-label="PDF page navigation">
+                {pdfPages.map((page) => <button key={page} className={page === visiblePage ? "active" : ""} onClick={() => goToPage(page)} aria-current={page === visiblePage ? "page" : undefined}>{page}</button>)}
+              </div>
+            </> : <small>Open the PDF to build a page map.</small>}
           </div>
         </aside>
 
@@ -466,34 +473,70 @@ export function DocumentReader({ document, onBack, onDocumentUpdated }: Document
           line-height: 1.45;
         }
 
-        .reader-page-rail button {
-          width: 100%;
+        .page-map-heading {
           display: flex;
-          align-items: center;
-          gap: 9px;
-          margin-top: 7px;
-          padding: 7px;
-          border: 0;
-          border-radius: 7px;
-          color: #5f6f69;
-          background: transparent;
-          text-align: left;
-          font-size: 11px;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 10px;
         }
 
-        .reader-page-rail button:hover,
-        .reader-page-rail button.active {
-          color: #285d50;
-          background: #e3ede5;
+        .page-map-heading .eyebrow {
+          margin-bottom: 4px;
+        }
+
+        .page-map-heading strong {
+          color: #30413d;
+          font-size: 12px;
+        }
+
+        .page-map-heading span {
+          padding: 4px 7px;
+          border-radius: 999px;
+          color: #426f62;
+          background: #e8f1e9;
+          font-size: 10px;
           font-weight: 700;
         }
 
-        .reader-page-rail i {
-          width: 20px;
-          height: 26px;
-          border: 1px solid #dbe1dc;
-          border-radius: 2px;
-          background: linear-gradient(#fffefa 30%, #e8ebe7 30%, #e8ebe7 36%, #fffefa 36%, #fffefa 58%, #e8ebe7 58%, #e8ebe7 64%, #fffefa 64%);
+        .page-map-progress {
+          height: 5px;
+          margin-bottom: 12px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: #e2e8e2;
+        }
+
+        .page-map-progress span {
+          display: block;
+          height: 100%;
+          border-radius: inherit;
+          background: #5b927a;
+          transition: width 180ms ease;
+        }
+
+        .page-map-grid {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 5px;
+        }
+
+        .page-map-grid button {
+          min-width: 0;
+          min-height: 29px;
+          border: 1px solid #dfe6df;
+          border-radius: 7px;
+          color: #61716b;
+          background: #fbfcf9;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .page-map-grid button:hover,
+        .page-map-grid button.active {
+          color: #ffffff;
+          background: #497970;
+          border-color: #497970;
         }
 
         .document-reader-canvas {
