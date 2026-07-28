@@ -12,6 +12,15 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   return asArray(value)[0] ?? null;
 }
 
+type NoteImageRow = {
+  id: string;
+  storage_path: string;
+  original_filename: string | null;
+  mime_type: string;
+  file_size: number;
+  created_at: string;
+};
+
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -38,10 +47,17 @@ export default async function Home() {
     .select("id, name, institution, programme, academic_year, modules(id, course_id, name, sort_order, topics(id, module_id, name, description, last_studied_at, sort_order, learning_objectives(id, body, sort_order)))")
     .order("created_at", { ascending: true });
 
-  const { data: noteRows } = await supabase
+  const { data: noteRowsWithImages, error: noteRowsWithImagesError } = await supabase
+    .from("notes")
+    .select("id, topic_id, title, body, updated_at, note_citations(id, document_id, page_start, page_end, excerpt, documents(id, title)), note_images(id, storage_path, original_filename, mime_type, file_size, created_at)")
+    .order("updated_at", { ascending: false });
+
+  const { data: fallbackNoteRows } = noteRowsWithImagesError ? await supabase
     .from("notes")
     .select("id, topic_id, title, body, updated_at, note_citations(id, document_id, page_start, page_end, excerpt, documents(id, title))")
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false }) : { data: null };
+
+  const noteRows = noteRowsWithImages ?? fallbackNoteRows ?? [];
 
   const { data: deckRows } = await supabase
     .from("flashcard_decks")
@@ -101,7 +117,7 @@ export default async function Home() {
       })),
   }));
 
-  const notes: StudyNote[] = (noteRows ?? []).map((note) => ({
+  const notes: StudyNote[] = await Promise.all((noteRows ?? []).map(async (note) => ({
     id: note.id,
     topicId: note.topic_id,
     title: note.title,
@@ -115,7 +131,19 @@ export default async function Home() {
       pageEnd: citation.page_end,
       excerpt: citation.excerpt,
     })),
-  }));
+    images: await Promise.all(asArray<NoteImageRow>((note as typeof note & { note_images?: NoteImageRow[] }).note_images).map(async (image) => {
+      const { data } = await supabase.storage.from("study-note-images").createSignedUrl(image.storage_path, 60 * 60);
+      return {
+        id: image.id,
+        storagePath: image.storage_path,
+        originalFilename: image.original_filename,
+        mimeType: image.mime_type,
+        fileSize: image.file_size,
+        signedUrl: data?.signedUrl ?? "",
+        createdAt: image.created_at,
+      };
+    })),
+  })));
 
   const flashcards: StudyFlashcard[] = (deckRows ?? []).flatMap((deck) => asArray(deck.flashcards).map((card) => ({
     id: card.id,

@@ -36,5 +36,5 @@ export async function POST(request: Request) {
     .single();
   if (noteError || !note) return NextResponse.json({ error: "We couldn't create that note. Please try again." }, { status: 500 });
 
-  return NextResponse.json({ note: { id: note.id, topicId: note.topic_id, title: note.title, body: note.body, updatedAt: note.updated_at, citations: [] } }, { status: 201 });
+  return NextResponse.json({ note: { id: note.id, topicId: note.topic_id, title: note.title, body: note.body, updatedAt: note.updated_at, citations: [], images: [] } }, { status: 201 });
 }

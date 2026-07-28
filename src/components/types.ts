@@ -62,6 +62,16 @@ export type StudyNoteCitation = {
   excerpt: string | null;
 };
 
+export type StudyNoteImage = {
+  id: string;
+  storagePath: string;
+  originalFilename: string | null;
+  mimeType: string;
+  fileSize: number;
+  signedUrl: string;
+  createdAt: string;
+};
+
 export type StudyNote = {
   id: string;
   topicId: string;
@@ -69,6 +79,7 @@ export type StudyNote = {
   body: string;
   updatedAt: string;
   citations: StudyNoteCitation[];
+  images: StudyNoteImage[];
 };
 
 export type FlashcardKind = "basic" | "cloze";
