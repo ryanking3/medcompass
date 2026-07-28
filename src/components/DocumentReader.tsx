@@ -59,6 +59,8 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [noteFeedback, setNoteFeedback] = useState("");
   const [createdNoteTopicId, setCreatedNoteTopicId] = useState<string | null>(null);
+  const [noteComposerOpen, setNoteComposerOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState({ title: "", body: "", excerpt: "", page: 1 });
   const canvasRef = useRef<HTMLElement | null>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const scrollFrameRef = useRef<number | null>(null);
@@ -158,21 +160,31 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
     }
   }
 
-  async function createNoteFromCurrentPage() {
-    if (!selectedNoteTopicId || isCreatingNote) return;
+  function openNoteComposer() {
+    if (!selectedNoteTopicId) return;
+    const selection = globalThis.getSelection?.()?.toString().replace(/\s+/g, " ").trim() ?? "";
+    const fallbackTitle = `${document.title}, p. ${visiblePage}`;
+    setNoteDraft({
+      title: titleFromSelection(selection, fallbackTitle),
+      body: selection ? `${selection}\n\n` : "",
+      excerpt: selection,
+      page: visiblePage,
+    });
+    setNoteFeedback("");
+    setCreatedNoteTopicId(null);
+    setNoteComposerOpen(true);
+  }
+
+  async function saveComposedNote() {
+    if (!selectedNoteTopicId || isCreatingNote || !noteDraft.title.trim()) return;
     setIsCreatingNote(true);
     setNoteFeedback("");
     setCreatedNoteTopicId(null);
 
-    const selection = globalThis.getSelection?.()?.toString().replace(/\s+/g, " ").trim() ?? "";
-    const fallbackTitle = `${document.title}, p. ${visiblePage}`;
-    const noteTitle = titleFromSelection(selection, fallbackTitle);
-    const noteBody = selection ? `${selection}\n\nMy notes:\n` : `Notes from ${document.title}, page ${visiblePage}\n\n`;
-
     const noteResponse = await fetch("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topicId: selectedNoteTopicId, title: noteTitle, body: noteBody }),
+      body: JSON.stringify({ topicId: selectedNoteTopicId, title: noteDraft.title, body: noteDraft.body }),
     });
     const noteResult = await noteResponse.json().catch(() => ({}));
 
@@ -186,7 +198,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
     const citationResponse = await fetch(`/api/notes/${note.id}/citations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documentId: document.id, pageStart: visiblePage, pageEnd: visiblePage, excerpt: selection }),
+      body: JSON.stringify({ documentId: document.id, pageStart: noteDraft.page, pageEnd: noteDraft.page, excerpt: noteDraft.excerpt }),
     });
     const citationResult = await citationResponse.json().catch(() => ({}));
     setIsCreatingNote(false);
@@ -195,12 +207,14 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
       onNoteCreated(note);
       setCreatedNoteTopicId(selectedNoteTopicId);
       setNoteFeedback(citationResult.error ?? "Note created, but we couldn't attach the citation.");
+      setNoteComposerOpen(false);
       return;
     }
 
     onNoteCreated({ ...note, citations: [citationResult.citation] });
     setCreatedNoteTopicId(selectedNoteTopicId);
-    setNoteFeedback(selection ? "Note clipped. You can keep reading." : `Page ${visiblePage} note created. You can keep reading.`);
+    setNoteComposerOpen(false);
+    setNoteFeedback("Note saved. You can keep reading.");
   }
 
   return (
@@ -282,13 +296,36 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
             <div className="reader-note-tool">
               <div className="reader-note-tool-heading"><span>↗</span><div><strong>Create source note</strong><small>{document.linkedTopics.length ? "Highlight text first, or cite the current page." : "Link this source to a topic first."}</small></div></div>
               {document.linkedTopics.length > 1 && <label>Topic<select value={selectedNoteTopicId} onChange={(event) => setNoteTopicId(event.target.value)}>{document.linkedTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>}
-              <button className="reader-note-action" onClick={createNoteFromCurrentPage} disabled={!selectedNoteTopicId || isCreatingNote}>{isCreatingNote ? "Creating…" : "Create note"}</button>
+              <button className="reader-note-action" onClick={openNoteComposer} disabled={!selectedNoteTopicId || isCreatingNote}>{isCreatingNote ? "Saving…" : "Write note"}</button>
               {noteFeedback && <div className={createdNoteTopicId ? "reader-note-success" : "reader-note-message"} role="status"><p>{noteFeedback}</p>{createdNoteTopicId && <button onClick={() => onOpenNotesForTopic(createdNoteTopicId)}>Open note →</button>}</div>}
             </div>
             <button disabled><span>✦</span><div><strong>Ask this source</strong><small>Coming with AI integration</small></div></button>
           </div>
         </aside>
       </div>
+      {noteComposerOpen && <div className="reader-modal-backdrop">
+        <section className="reader-note-modal" role="dialog" aria-modal="true" aria-labelledby="reader-note-title">
+          <div className="reader-note-modal-heading">
+            <div>
+              <p className="eyebrow">Source note</p>
+              <h2 id="reader-note-title">Write a note from page {noteDraft.page}</h2>
+            </div>
+            <button onClick={() => setNoteComposerOpen(false)} aria-label="Close note composer">×</button>
+          </div>
+          <div className="reader-note-context">
+            <strong>{document.title}, p. {noteDraft.page}</strong>
+            <p>{noteDraft.excerpt ? noteDraft.excerpt : "No text selected. This note will still cite the current page."}</p>
+          </div>
+          {document.linkedTopics.length > 1 && <label className="reader-note-modal-field">Topic<select value={selectedNoteTopicId} onChange={(event) => setNoteTopicId(event.target.value)}>{document.linkedTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>}
+          <label className="reader-note-modal-field">Title<input value={noteDraft.title} onChange={(event) => setNoteDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder="Note title" /></label>
+          <label className="reader-note-modal-field">Note<textarea value={noteDraft.body} onChange={(event) => setNoteDraft((draft) => ({ ...draft, body: event.target.value }))} placeholder="Write what you want to remember…" /></label>
+          {noteFeedback && !createdNoteTopicId && <p className="reader-note-modal-error" role="alert">{noteFeedback}</p>}
+          <div className="reader-note-modal-actions">
+            <button className="button ghost" onClick={() => setNoteComposerOpen(false)}>Cancel</button>
+            <button className="button primary" onClick={saveComposedNote} disabled={isCreatingNote || !noteDraft.title.trim()}>{isCreatingNote ? "Saving…" : "Save note"}</button>
+          </div>
+        </section>
+      </div>}
       <style jsx>{`
         .document-reader {
           height: 100vh;
@@ -933,6 +970,127 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
           border-color: #d7e5da;
           font-size: 10px;
           font-weight: 800;
+        }
+
+        .reader-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 80;
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          background: rgba(25, 39, 34, .32);
+          backdrop-filter: blur(4px);
+        }
+
+        .reader-note-modal {
+          width: min(640px, 100%);
+          max-height: calc(100vh - 48px);
+          overflow: auto;
+          padding: 24px;
+          border: 1px solid #dce6de;
+          border-radius: 16px;
+          background: #fffefa;
+          box-shadow: 0 24px 70px rgba(24, 43, 36, .18);
+        }
+
+        .reader-note-modal-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 18px;
+          margin-bottom: 16px;
+        }
+
+        .reader-note-modal-heading h2 {
+          margin: 0;
+          color: #263735;
+          font: 25px Georgia, serif;
+          font-weight: 500;
+          letter-spacing: -.5px;
+        }
+
+        .reader-note-modal-heading > button {
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          border: 1px solid #d9e3db;
+          border-radius: 999px;
+          color: #546761;
+          background: #fbfcf9;
+          font-size: 21px;
+          line-height: 1;
+        }
+
+        .reader-note-context {
+          margin-bottom: 16px;
+          padding: 13px;
+          border: 1px solid #d9e7dc;
+          border-radius: 10px;
+          background: #f0f7f1;
+        }
+
+        .reader-note-context strong {
+          display: block;
+          color: #365f55;
+          font-size: 12px;
+        }
+
+        .reader-note-context p {
+          max-height: 110px;
+          overflow: auto;
+          margin: 7px 0 0;
+          color: #65766f;
+          font-size: 12px;
+          line-height: 1.55;
+        }
+
+        .reader-note-modal-field {
+          display: grid;
+          gap: 7px;
+          margin-top: 12px;
+          color: #5d6d68;
+          font-size: 10px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: .07em;
+        }
+
+        .reader-note-modal-field input,
+        .reader-note-modal-field select,
+        .reader-note-modal-field textarea {
+          width: 100%;
+          border: 1px solid #d4dfd5;
+          border-radius: 8px;
+          padding: 10px 11px;
+          color: #2e3f3c;
+          background: white;
+          font-size: 13px;
+          font-weight: 400;
+          letter-spacing: normal;
+          text-transform: none;
+          outline-color: #497970;
+        }
+
+        .reader-note-modal-field textarea {
+          min-height: 180px;
+          resize: vertical;
+          font: 15px/1.6 Georgia, serif;
+        }
+
+        .reader-note-modal-error {
+          margin: 12px 0 0;
+          color: #9a4a4a;
+          font-size: 11px;
+          line-height: 1.45;
+        }
+
+        .reader-note-modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 18px;
         }
 
         .reader-tool-list button:disabled {
