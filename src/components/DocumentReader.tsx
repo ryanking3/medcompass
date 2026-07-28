@@ -58,6 +58,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
   const [noteTopicId, setNoteTopicId] = useState(document.linkedTopics[0]?.id ?? "");
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [noteFeedback, setNoteFeedback] = useState("");
+  const [createdNoteTopicId, setCreatedNoteTopicId] = useState<string | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const scrollFrameRef = useRef<number | null>(null);
@@ -161,6 +162,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
     if (!selectedNoteTopicId || isCreatingNote) return;
     setIsCreatingNote(true);
     setNoteFeedback("");
+    setCreatedNoteTopicId(null);
 
     const selection = globalThis.getSelection?.()?.toString().replace(/\s+/g, " ").trim() ?? "";
     const fallbackTitle = `${document.title}, p. ${visiblePage}`;
@@ -191,12 +193,14 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
 
     if (!citationResponse.ok) {
       onNoteCreated(note);
+      setCreatedNoteTopicId(selectedNoteTopicId);
       setNoteFeedback(citationResult.error ?? "Note created, but we couldn't attach the citation.");
       return;
     }
 
     onNoteCreated({ ...note, citations: [citationResult.citation] });
-    onOpenNotesForTopic(selectedNoteTopicId);
+    setCreatedNoteTopicId(selectedNoteTopicId);
+    setNoteFeedback(selection ? "Note clipped. You can keep reading." : `Page ${visiblePage} note created. You can keep reading.`);
   }
 
   return (
@@ -279,7 +283,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
               <div className="reader-note-tool-heading"><span>↗</span><div><strong>Create source note</strong><small>{document.linkedTopics.length ? "Highlight text first, or cite the current page." : "Link this source to a topic first."}</small></div></div>
               {document.linkedTopics.length > 1 && <label>Topic<select value={selectedNoteTopicId} onChange={(event) => setNoteTopicId(event.target.value)}>{document.linkedTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>}
               <button className="reader-note-action" onClick={createNoteFromCurrentPage} disabled={!selectedNoteTopicId || isCreatingNote}>{isCreatingNote ? "Creating…" : "Create note"}</button>
-              {noteFeedback && <p role="status">{noteFeedback}</p>}
+              {noteFeedback && <div className={createdNoteTopicId ? "reader-note-success" : "reader-note-message"} role="status"><p>{noteFeedback}</p>{createdNoteTopicId && <button onClick={() => onOpenNotesForTopic(createdNoteTopicId)}>Open note →</button>}</div>}
             </div>
             <button disabled><span>✦</span><div><strong>Ask this source</strong><small>Coming with AI integration</small></div></button>
           </div>
@@ -898,11 +902,37 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
           text-align: center;
         }
 
-        .reader-note-tool p {
+        .reader-note-message p,
+        .reader-note-success p {
           margin: 9px 0 0;
           color: #6c7b75;
           font-size: 10px;
           line-height: 1.45;
+        }
+
+        .reader-note-success {
+          margin-top: 10px;
+          padding: 10px;
+          border: 1px solid #cfe2d2;
+          border-radius: 8px;
+          background: #e6f1e8;
+        }
+
+        .reader-note-success p {
+          margin: 0;
+          color: #3b6f5d;
+          font-weight: 700;
+        }
+
+        .reader-tool-list .reader-note-success button {
+          justify-content: center;
+          margin-top: 8px;
+          padding: 7px 9px;
+          color: #315f54;
+          background: #fffefa;
+          border-color: #d7e5da;
+          font-size: 10px;
+          font-weight: 800;
         }
 
         .reader-tool-list button:disabled {
