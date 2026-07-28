@@ -11,6 +11,11 @@ function pageNumber(value: unknown) {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
 }
 
+function firstRelation<T>(value: T | T[] | null | undefined) {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ cardId: string }> }) {
   const { cardId } = await params;
   const supabase = await createClient();
@@ -61,7 +66,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ca
     .single();
   if (cardError || !card) return NextResponse.json({ error: "We couldn't save that card. Please try again." }, { status: 500 });
 
-  const topicId = existingCard.flashcard_decks[0]?.topic_id;
+  const topicId = firstRelation(existingCard.flashcard_decks)?.topic_id;
   if (!topicId) return NextResponse.json({ error: "This card is missing its topic context." }, { status: 500 });
   return NextResponse.json({ card: { id: card.id, deckId: card.deck_id, topicId, kind: card.kind, front: card.front, back: card.back, isKept: card.is_kept, sourceDocumentId: card.source_document_id, sourceDocumentTitle, sourcePageStart: card.source_page_start, sourcePageEnd: card.source_page_end, updatedAt: card.updated_at } });
 }
