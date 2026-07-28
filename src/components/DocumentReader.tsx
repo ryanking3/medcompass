@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
+import { NoteInlineContent, localNoteImageToken, noteImageToken, type InlineNoteImage } from "@/components/NoteInlineContent";
 import type { StudyDocument, StudyNote } from "@/components/types";
 
 const PdfContinuousViewer = dynamic(() => import("@/components/PdfContinuousViewer"), {
   ssr: false,
   loading: () => <div className="reader-loading reader-inline"><div /><h1>Rendering your PDF</h1><p>Preparing the page canvas and selectable text layer.</p></div>,
 });
+
+type PendingNoteImage = InlineNoteImage & { file: File; localId: string };
 
 type DocumentReaderProps = {
   document: StudyDocument;
@@ -61,6 +64,9 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
   const [createdNoteTopicId, setCreatedNoteTopicId] = useState<string | null>(null);
   const [noteComposerOpen, setNoteComposerOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState({ title: "", body: "", excerpt: "", page: 1 });
+  const [pendingNoteImages, setPendingNoteImages] = useState<PendingNoteImage[]>([]);
+  const noteImageInputRef = useRef<HTMLInputElement | null>(null);
+  const noteModalBodyRef = useRef<HTMLTextAreaElement | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
   const pageRefs = useRef(new Map<number, HTMLDivElement>());
   const scrollFrameRef = useRef<number | null>(null);
@@ -170,9 +176,67 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
       excerpt: selection,
       page: visiblePage,
     });
+    pendingNoteImages.forEach((image) => URL.revokeObjectURL(image.signedUrl));
+    setPendingNoteImages([]);
     setNoteFeedback("");
     setCreatedNoteTopicId(null);
     setNoteComposerOpen(true);
+  }
+
+  function closeNoteComposer() {
+    pendingNoteImages.forEach((image) => URL.revokeObjectURL(image.signedUrl));
+    setPendingNoteImages([]);
+    setNoteComposerOpen(false);
+  }
+
+  function insertTextIntoNoteDraft(text: string) {
+    const input = noteModalBodyRef.current;
+    const currentBody = noteDraft.body;
+    const start = input?.selectionStart ?? currentBody.length;
+    const end = input?.selectionEnd ?? currentBody.length;
+    const prefix = currentBody.slice(0, start);
+    const suffix = currentBody.slice(end);
+    const needsLeadingBreak = prefix && !prefix.endsWith("\n") ? "\n\n" : "";
+    const needsTrailingBreak = suffix && !suffix.startsWith("\n") ? "\n\n" : "";
+    const nextBody = `${prefix}${needsLeadingBreak}${text}${needsTrailingBreak}${suffix}`;
+    setNoteDraft((draft) => ({ ...draft, body: nextBody }));
+    window.requestAnimationFrame(() => {
+      const nextCursor = start + needsLeadingBreak.length + text.length;
+      noteModalBodyRef.current?.focus();
+      noteModalBodyRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  }
+
+  function addPendingNoteImage(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setNoteFeedback("Paste or upload an image file.");
+      return;
+    }
+    const localId = crypto.randomUUID();
+    const pendingImage: PendingNoteImage = {
+      id: `local:${localId}`,
+      localId,
+      file,
+      signedUrl: URL.createObjectURL(file),
+      originalFilename: file.name || "Pasted image",
+    };
+    setPendingNoteImages((images) => [...images, pendingImage]);
+    insertTextIntoNoteDraft(localNoteImageToken(localId));
+  }
+
+  function removePendingNoteImage(imageId: string) {
+    const image = pendingNoteImages.find((entry) => entry.id === imageId);
+    if (image) URL.revokeObjectURL(image.signedUrl);
+    setPendingNoteImages((images) => images.filter((entry) => entry.id !== imageId));
+    setNoteDraft((draft) => ({ ...draft, body: draft.body.replaceAll(noteImageToken(imageId), "").replace(/\n{3,}/g, "\n\n").trim() }));
+  }
+
+  function handleNoteModalPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith("image/"));
+    const imageFile = imageItem?.getAsFile();
+    if (!imageFile) return;
+    event.preventDefault();
+    addPendingNoteImage(imageFile);
   }
 
   async function saveComposedNote() {
@@ -180,11 +244,13 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
     setIsCreatingNote(true);
     setNoteFeedback("");
     setCreatedNoteTopicId(null);
+    let finalBody = noteDraft.body;
+    const initialBody = pendingNoteImages.length ? noteDraft.body.replace(/\[\[note-image:local:[^\]]+\]\]/g, "").replace(/\n{3,}/g, "\n\n").trim() : noteDraft.body;
 
     const noteResponse = await fetch("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topicId: selectedNoteTopicId, title: noteDraft.title, body: noteDraft.body }),
+      body: JSON.stringify({ topicId: selectedNoteTopicId, title: noteDraft.title, body: initialBody }),
     });
     const noteResult = await noteResponse.json().catch(() => ({}));
 
@@ -195,6 +261,36 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
     }
 
     const note = noteResult.note as StudyNote;
+    const uploadedImages: StudyNote["images"] = [];
+
+    for (const pendingImage of pendingNoteImages) {
+      const formData = new FormData();
+      formData.append("image", pendingImage.file);
+      const imageResponse = await fetch(`/api/notes/${note.id}/images`, { method: "POST", body: formData });
+      const imageResult = await imageResponse.json().catch(() => ({}));
+      if (!imageResponse.ok) {
+        setIsCreatingNote(false);
+        onNoteCreated(note);
+        setCreatedNoteTopicId(selectedNoteTopicId);
+        setNoteFeedback(imageResult.error ?? "Note created, but we couldn't attach every image.");
+        closeNoteComposer();
+        return;
+      }
+      uploadedImages.push(imageResult.image);
+      finalBody = finalBody.replaceAll(noteImageToken(pendingImage.id), noteImageToken(imageResult.image.id));
+    }
+
+    let savedNote = note;
+    if (finalBody !== initialBody) {
+      const bodyResponse = await fetch(`/api/notes/${note.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: noteDraft.title, body: finalBody }),
+      });
+      const bodyResult = await bodyResponse.json().catch(() => ({}));
+      if (bodyResponse.ok) savedNote = { ...(bodyResult.note as StudyNote), citations: [], images: [] };
+    }
+
     const citationResponse = await fetch(`/api/notes/${note.id}/citations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -204,16 +300,16 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
     setIsCreatingNote(false);
 
     if (!citationResponse.ok) {
-      onNoteCreated(note);
+      onNoteCreated({ ...savedNote, images: uploadedImages });
       setCreatedNoteTopicId(selectedNoteTopicId);
       setNoteFeedback(citationResult.error ?? "Note created, but we couldn't attach the citation.");
-      setNoteComposerOpen(false);
+      closeNoteComposer();
       return;
     }
 
-    onNoteCreated({ ...note, citations: [citationResult.citation] });
+    onNoteCreated({ ...savedNote, citations: [citationResult.citation], images: uploadedImages });
     setCreatedNoteTopicId(selectedNoteTopicId);
-    setNoteComposerOpen(false);
+    closeNoteComposer();
     setNoteFeedback("Note saved. You can keep reading.");
   }
 
@@ -310,7 +406,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
               <p className="eyebrow">Source note</p>
               <h2 id="reader-note-title">Write a note from page {noteDraft.page}</h2>
             </div>
-            <button onClick={() => setNoteComposerOpen(false)} aria-label="Close note composer">×</button>
+            <button onClick={closeNoteComposer} aria-label="Close note composer">×</button>
           </div>
           <div className="reader-note-context">
             <strong>{document.title}, p. {noteDraft.page}</strong>
@@ -318,10 +414,12 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
           </div>
           {document.linkedTopics.length > 1 && <label className="reader-note-modal-field">Topic<select value={selectedNoteTopicId} onChange={(event) => setNoteTopicId(event.target.value)}>{document.linkedTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>}
           <label className="reader-note-modal-field">Title<input value={noteDraft.title} onChange={(event) => setNoteDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder="Note title" /></label>
-          <label className="reader-note-modal-field">Note<textarea value={noteDraft.body} onChange={(event) => setNoteDraft((draft) => ({ ...draft, body: event.target.value }))} placeholder="Write what you want to remember…" /></label>
+          <label className="reader-note-modal-field">Note<textarea ref={noteModalBodyRef} value={noteDraft.body} onChange={(event) => setNoteDraft((draft) => ({ ...draft, body: event.target.value }))} onPaste={handleNoteModalPaste} placeholder="Write what you want to remember… Paste screenshots or diagrams here." /></label>
+          <div className="reader-note-modal-tools"><input ref={noteImageInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) addPendingNoteImage(file); event.target.value = ""; }} /><button className="button ghost" onClick={() => noteImageInputRef.current?.click()} disabled={isCreatingNote}>Add image</button></div>
+          <NoteInlineContent body={noteDraft.body} images={pendingNoteImages} onRemoveImage={removePendingNoteImage} removeDisabled={isCreatingNote} />
           {noteFeedback && !createdNoteTopicId && <p className="reader-note-modal-error" role="alert">{noteFeedback}</p>}
           <div className="reader-note-modal-actions">
-            <button className="button ghost" onClick={() => setNoteComposerOpen(false)}>Cancel</button>
+            <button className="button ghost" onClick={closeNoteComposer}>Cancel</button>
             <button className="button primary" onClick={saveComposedNote} disabled={isCreatingNote || !noteDraft.title.trim()}>{isCreatingNote ? "Saving…" : "Save note"}</button>
           </div>
         </section>
@@ -1077,6 +1175,17 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
           min-height: 180px;
           resize: vertical;
           font: 15px/1.6 Georgia, serif;
+        }
+
+        .reader-note-modal-tools {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 10px;
+        }
+
+        .reader-note-modal-tools .button {
+          padding: 8px 11px;
+          font-size: 11px;
         }
 
         .reader-note-modal-error {
