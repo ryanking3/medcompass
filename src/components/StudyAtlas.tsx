@@ -105,12 +105,39 @@ function todayString() {
   return today.toISOString().slice(0, 10);
 }
 
+function collectNeighborhoodIds(startId: string | null, edges: AtlasEdge[], depth: number) {
+  if (!startId) return new Set<string>();
+  const ids = new Set<string>([startId]);
+  let frontier = new Set<string>([startId]);
+
+  for (let level = 0; level < depth; level += 1) {
+    const nextFrontier = new Set<string>();
+    edges.forEach((edge) => {
+      if (frontier.has(edge.source) && !ids.has(edge.target)) {
+        ids.add(edge.target);
+        nextFrontier.add(edge.target);
+      }
+      if (frontier.has(edge.target) && !ids.has(edge.source)) {
+        ids.add(edge.source);
+        nextFrontier.add(edge.source);
+      }
+    });
+    frontier = nextFrontier;
+  }
+
+  return ids;
+}
+
 export function StudyAtlas({ courses, documents, notes, flashcards, exams, planBlocks, onCreateTopic, onOpenTopic, onOpenDocument, onOpenNotesForTopic, onOpenCardsForTopic, onOpenPlanner }: StudyAtlasProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | AtlasKind>("all");
   const [query, setQuery] = useState("");
   const [zoom, setZoom] = useState(1);
+  const [graphMode, setGraphMode] = useState<"global" | "local">("global");
+  const [localDepth, setLocalDepth] = useState(1);
+  const [showLabels, setShowLabels] = useState(true);
+  const [nodeScale, setNodeScale] = useState(1);
 
   const topics = useMemo(() => courses.flatMap((course) => course.modules.flatMap((module) => module.topics.map((topic) => ({ ...topic, courseId: course.id, courseName: course.name, moduleId: module.id, moduleName: module.name })))), [courses]);
 
@@ -331,6 +358,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const activeNodeId = hoveredNodeId ?? selectedNodeId;
+  const localFocusId = selectedNodeId ?? "workspace";
+  const localIds = useMemo(() => collectNeighborhoodIds(localFocusId, edges, localDepth), [edges, localDepth, localFocusId]);
   const connectedIds = useMemo(() => {
     if (!activeNodeId) return new Set<string>();
     const ids = new Set<string>([activeNodeId]);
@@ -341,10 +370,15 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
     return ids;
   }, [activeNodeId, edges]);
 
-  const visibleNodes = useMemo(() => nodes.filter((node) => (filter === "all" || node.kind === filter || (filter === "course" && node.id === "workspace")) && nodeMatches(node, query)), [filter, nodes, query]);
+  const visibleNodes = useMemo(() => nodes.filter((node) => {
+    const inMode = graphMode === "global" || localIds.has(node.id);
+    const inFilter = filter === "all" || node.kind === filter || (filter === "course" && node.id === "workspace");
+    return inMode && inFilter && nodeMatches(node, query);
+  }), [filter, graphMode, localIds, nodes, query]);
   const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
   const visibleEdges = edges.filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
+  const focusNode = nodeById.get(localFocusId) ?? null;
   const selectedConnections = selectedNode ? edges
     .filter((edge) => edge.source === selectedNode.id || edge.target === selectedNode.id)
     .map((edge) => ({ edge, node: nodeById.get(edge.source === selectedNode.id ? edge.target : edge.source) }))
@@ -388,76 +422,106 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
   return <div className="atlas-page">
     <header className="atlas-header">
       <div>
-        <p className="eyebrow">Mind map</p>
-        <h1>Study Atlas</h1>
-        <p>Explore the map your study work is already creating: topics, sources, notes, citations, cards, exams, and planned revision blocks.</p>
+        <p className="eyebrow">Study Atlas</p>
+        <h1>Your knowledge graph.</h1>
+        <p>A living map of the relationships already forming between topics, sources, citations, notes, cards, exams, and study blocks.</p>
       </div>
-      <button className="button primary" onClick={onCreateTopic}>+ New topic</button>
+      <div className="atlas-stats" aria-label="Atlas summary">
+        <span><strong>{visibleNodes.length}</strong> nodes</span>
+        <span><strong>{visibleEdges.length}</strong> links</span>
+        <button className="button primary" onClick={onCreateTopic}>+ New topic</button>
+      </div>
     </header>
 
-    <section className="atlas-tools">
-      <label className="atlas-search">⌕ <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search the atlas" aria-label="Search the atlas" /></label>
-      <div className="atlas-filters" aria-label="Filter map nodes">{atlasKinds.map((entry) => <button key={entry.kind} className={filter === entry.kind ? "active" : ""} onClick={() => setFilter(entry.kind)}>{entry.label}</button>)}</div>
-      <label className="zoom-control">Zoom <input type="range" min="0.75" max="1.35" step="0.05" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /></label>
-    </section>
-
-    <section className="atlas-layout">
-      <div className="atlas-canvas">
-        <svg viewBox="0 0 1000 720" role="img" aria-label="Interactive study atlas mind map" style={{ transform: `scale(${zoom})` }}>
-          <defs>
-            <radialGradient id="atlasGlow" cx="50%" cy="42%" r="58%">
-              <stop offset="0%" stopColor="#f4faf1" />
-              <stop offset="100%" stopColor="#e4ede5" />
-            </radialGradient>
-          </defs>
-          <rect width="1000" height="720" rx="28" fill="url(#atlasGlow)" />
-          {visibleEdges.map((edge) => {
-            const source = nodeById.get(edge.source);
-            const target = nodeById.get(edge.target);
-            if (!source || !target) return null;
-            const active = Boolean(activeNodeId && connectedIds.has(source.id) && connectedIds.has(target.id));
-            const faded = Boolean(activeNodeId && !active);
-            return <g key={edge.id} className={`edge ${edge.kind} ${active ? "active" : ""} ${faded ? "faded" : ""}`}>
-              <line x1={source.x} y1={source.y} x2={target.x} y2={target.y} />
-              {active && <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 5}>{edge.label}</text>}
-            </g>;
-          })}
-          {visibleNodes.map((node) => {
-            const active = activeNodeId === node.id;
-            const connected = connectedIds.has(node.id);
-            const faded = Boolean(activeNodeId && !active && !connected);
-            return <g key={node.id} className={`node ${node.kind} ${active ? "active" : ""} ${connected ? "connected" : ""} ${faded ? "faded" : ""}`} transform={`translate(${node.x} ${node.y})`} onMouseEnter={() => setHoveredNodeId(node.id)} onMouseLeave={() => setHoveredNodeId(null)} onClick={() => setSelectedNodeId(node.id)} tabIndex={0} role="button" aria-label={`${kindLabels[node.kind]}: ${node.label}`} onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") setSelectedNodeId(node.id);
-            }}>
-              <circle r={node.radius + 10} className="node-halo" />
-              <circle r={node.radius} className="node-circle" />
-              <text className="node-glyph" textAnchor="middle" dy={node.kind === "source" ? "0.32em" : "0.35em"}>{nodeGlyphs[node.kind]}</text>
-              <text className="node-label" textAnchor="middle" y={node.radius + 17}>{node.label.length > 22 ? `${node.label.slice(0, 21)}…` : node.label}</text>
-            </g>;
-          })}
-        </svg>
+    <section className="atlas-shell">
+      <div className="atlas-commandbar">
+        <label className="atlas-search">⌕ <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search nodes, citations, objectives…" aria-label="Search the atlas" /></label>
+        <div className="mode-switch" aria-label="Graph mode">
+          <button className={graphMode === "global" ? "active" : ""} onClick={() => setGraphMode("global")}>Global</button>
+          <button className={graphMode === "local" ? "active" : ""} onClick={() => setGraphMode("local")}>Local</button>
+        </div>
+        <div className="atlas-filters" aria-label="Filter map nodes">{atlasKinds.map((entry) => <button key={entry.kind} className={filter === entry.kind ? "active" : ""} onClick={() => setFilter(entry.kind)}>{entry.label}</button>)}</div>
       </div>
 
-      <aside className="atlas-panel">
-        {selectedNode ? <>
-          <p className="eyebrow">{kindLabels[selectedNode.kind]}</p>
-          <h2>{selectedNode.label}</h2>
-          <p>{selectedNode.subtitle}</p>
-          <div className="atlas-meta">{selectedNode.meta.map((item) => <span key={item}>{item}</span>)}</div>
-          <button className="button dark" onClick={openSelected}>{selectedNode.kind === "source" ? "Open source →" : selectedNode.kind === "note" ? "Open notes →" : selectedNode.kind === "cards" ? "Review cards →" : selectedNode.kind === "exam" || selectedNode.kind === "block" ? "Open planner →" : selectedNode.kind === "topic" ? "Open topic →" : "Open related work →"}</button>
-          <div className="connection-list">
-            <strong>Connected to</strong>
-            {selectedConnections.length ? selectedConnections.map(({ edge, node }) => <button key={`${edge.id}:${node.id}`} onClick={() => setSelectedNodeId(node.id)}><span>{kindLabels[node.kind]}</span><b>{node.label}</b><small>{edge.label}</small></button>) : <p>No visible connections under this filter.</p>}
+      <div className="atlas-workbench">
+        <div className="atlas-canvas">
+          <div className="canvas-card canvas-status">
+            <span>{graphMode === "local" ? "Local graph" : "Global graph"}</span>
+            <strong>{graphMode === "local" ? focusNode?.label ?? "Study Atlas" : "Whole workspace"}</strong>
+            <small>{graphMode === "local" ? `Depth ${localDepth} · ${visibleNodes.length} visible` : "Hover to reveal neighbours · click to inspect"}</small>
           </div>
-        </> : <>
-          <p className="eyebrow">How to use it</p>
-          <h2>Click any node.</h2>
-          <p>The map highlights direct relationships so a student can see what a topic is supported by, where notes came from, and which exams or study blocks depend on it.</p>
-          <div className="legend">
-            {atlasKinds.filter((entry) => entry.kind !== "all").map((entry) => <span key={entry.kind}><i className={entry.kind} />{entry.label}</span>)}
+          <div className="canvas-card canvas-controls" aria-label="Graph display controls">
+            <label>Zoom <input type="range" min="0.75" max="1.35" step="0.05" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /></label>
+            <label>Node size <input type="range" min="0.8" max="1.35" step="0.05" value={nodeScale} onChange={(event) => setNodeScale(Number(event.target.value))} /></label>
+            <label className={graphMode === "local" ? "" : "disabled"}>Depth <input disabled={graphMode !== "local"} type="range" min="1" max="3" step="1" value={localDepth} onChange={(event) => setLocalDepth(Number(event.target.value))} /></label>
+            <button className={showLabels ? "toggle-on" : ""} onClick={() => setShowLabels((current) => !current)}>{showLabels ? "Labels on" : "Labels quiet"}</button>
           </div>
-        </>}
-      </aside>
+          <svg viewBox="0 0 1000 720" role="img" aria-label="Interactive study atlas mind map" style={{ transform: `scale(${zoom})` }}>
+            <defs>
+              <radialGradient id="atlasGlow" cx="50%" cy="42%" r="68%">
+                <stop offset="0%" stopColor="#fbfbf3" />
+                <stop offset="58%" stopColor="#edf3ea" />
+                <stop offset="100%" stopColor="#dfe9e2" />
+              </radialGradient>
+              <pattern id="atlasGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+                <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#d5dfd8" strokeWidth="0.7" opacity="0.55" />
+              </pattern>
+            </defs>
+            <rect width="1000" height="720" rx="28" fill="url(#atlasGlow)" />
+            <rect width="1000" height="720" rx="28" fill="url(#atlasGrid)" opacity="0.55" />
+            {visibleEdges.map((edge) => {
+              const source = nodeById.get(edge.source);
+              const target = nodeById.get(edge.target);
+              if (!source || !target) return null;
+              const active = Boolean(activeNodeId && connectedIds.has(source.id) && connectedIds.has(target.id));
+              const faded = Boolean(activeNodeId && !active);
+              return <g key={edge.id} className={`edge ${edge.kind} ${active ? "active" : ""} ${faded ? "faded" : ""}`}>
+                <line x1={source.x} y1={source.y} x2={target.x} y2={target.y} />
+                {active && <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 5}>{edge.label}</text>}
+              </g>;
+            })}
+            {visibleNodes.map((node) => {
+              const active = activeNodeId === node.id;
+              const connected = connectedIds.has(node.id);
+              const faded = Boolean(activeNodeId && !active && !connected);
+              const radius = node.radius * nodeScale;
+              const label = node.label.length > 24 ? `${node.label.slice(0, 23)}…` : node.label;
+              return <g key={node.id} className={`node ${node.kind} ${active ? "active" : ""} ${connected ? "connected" : ""} ${faded ? "faded" : ""}`} transform={`translate(${node.x} ${node.y})`} onMouseEnter={() => setHoveredNodeId(node.id)} onMouseLeave={() => setHoveredNodeId(null)} onClick={() => setSelectedNodeId(node.id)} tabIndex={0} role="button" aria-label={`${kindLabels[node.kind]}: ${node.label}`} onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") setSelectedNodeId(node.id);
+              }}>
+                <circle r={radius + 13} className="node-halo" />
+                <circle r={radius} className="node-circle" />
+                <text className="node-glyph" textAnchor="middle" dy={node.kind === "source" ? "0.32em" : "0.35em"}>{nodeGlyphs[node.kind]}</text>
+                {(showLabels || active || connected) && <text className="node-label" textAnchor="middle" y={radius + 18}>{label}</text>}
+              </g>;
+            })}
+          </svg>
+        </div>
+
+        <aside className="atlas-panel">
+          {selectedNode ? <>
+            <div className="panel-type"><span className={selectedNode.kind} />{kindLabels[selectedNode.kind]}</div>
+            <h2>{selectedNode.label}</h2>
+            <p>{selectedNode.subtitle}</p>
+            <div className="atlas-meta">{selectedNode.meta.map((item) => <span key={item}>{item}</span>)}</div>
+            <div className="panel-actions">
+              <button className="button dark" onClick={openSelected}>{selectedNode.kind === "source" ? "Open source →" : selectedNode.kind === "note" ? "Open notes →" : selectedNode.kind === "cards" ? "Review cards →" : selectedNode.kind === "exam" || selectedNode.kind === "block" ? "Open planner →" : selectedNode.kind === "topic" ? "Open topic →" : "Open related work →"}</button>
+              <button className="button ghost" onClick={() => setGraphMode("local")}>Focus local</button>
+            </div>
+            <div className="connection-list">
+              <strong>Backlinks & neighbours</strong>
+              {selectedConnections.length ? selectedConnections.map(({ edge, node }) => <button key={`${edge.id}:${node.id}`} onClick={() => setSelectedNodeId(node.id)}><span>{kindLabels[node.kind]}</span><b>{node.label}</b><small>{edge.label}</small></button>) : <p>No visible connections under this filter.</p>}
+            </div>
+          </> : <>
+            <p className="eyebrow">Graph view</p>
+            <h2>Click a node to inspect it.</h2>
+            <p>Use Global for the whole workspace, or Local to zoom into the selected node’s neighbourhood. Hovering highlights direct links, just like a knowledge-base graph.</p>
+            <div className="legend">
+              {atlasKinds.filter((entry) => entry.kind !== "all").map((entry) => <span key={entry.kind}><i className={entry.kind} />{entry.label}</span>)}
+            </div>
+          </>}
+        </aside>
+      </div>
     </section>
 
     <section className="atlas-insights">
@@ -469,33 +533,46 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
     </section>
 
     <style jsx>{`
-      .atlas-page { max-width: 1260px; margin: 0 auto; padding: 55px 58px 90px; }
-      .atlas-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
-      .atlas-header h1 { margin: 0 0 9px; color: #202b2e; font: 50px Georgia, serif; font-weight: 500; letter-spacing: -1.8px; }
-      .atlas-header p:not(.eyebrow) { max-width: 720px; margin: 0; color: #66746f; font-size: 14px; line-height: 1.55; }
-      .atlas-tools { display: grid; grid-template-columns: minmax(230px, 330px) 1fr auto; gap: 12px; align-items: center; margin-bottom: 15px; }
-      .atlas-search { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #dce4dc; border-radius: 9px; color: #74817b; background: #fffefa; }
+      .atlas-page { max-width: 1360px; margin: 0 auto; padding: 42px 42px 80px; }
+      .atlas-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+      .atlas-header h1 { margin: 0 0 8px; color: #202b2e; font: 50px Georgia, serif; font-weight: 500; letter-spacing: -1.8px; }
+      .atlas-header p:not(.eyebrow) { max-width: 740px; margin: 0; color: #66746f; font-size: 14px; line-height: 1.55; }
+      .atlas-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+      .atlas-stats span { border: 1px solid #d8e4da; border-radius: 999px; padding: 8px 11px; color: #66766f; background: #fffefa; font-size: 11px; font-weight: 800; }
+      .atlas-stats strong { color: #263d37; font: 16px Georgia, serif; margin-right: 4px; }
+      .atlas-shell { border: 1px solid #d7e2d9; border-radius: 18px; background: #eef3ed; box-shadow: 0 14px 34px rgba(36,55,48,.07); overflow: hidden; }
+      .atlas-commandbar { display: grid; grid-template-columns: minmax(260px, 380px) auto minmax(0, 1fr); gap: 10px; align-items: center; padding: 12px; border-bottom: 1px solid #d7e2d9; background: rgba(255,254,250,.82); backdrop-filter: blur(10px); }
+      .atlas-search { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #dce4dc; border-radius: 11px; color: #74817b; background: #fffefa; box-shadow: inset 0 1px 0 rgba(255,255,255,.7); }
       .atlas-search input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; font-size: 12px; }
-      .atlas-filters { display: flex; flex-wrap: wrap; gap: 6px; }
-      .atlas-filters button { border: 1px solid #d8e2da; border-radius: 999px; padding: 7px 10px; color: #63756e; background: #fffefa; font-size: 11px; font-weight: 700; }
-      .atlas-filters button.active { color: #2f6d5f; border-color: #bad2c2; background: #e6f1e8; }
-      .zoom-control { display: flex; align-items: center; gap: 8px; color: #66746f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
-      .zoom-control input { accent-color: #497970; }
-      .atlas-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 15px; align-items: stretch; }
-      .atlas-canvas, .atlas-panel, .atlas-insights { border: 1px solid #dce6de; border-radius: 15px; background: #fffefa; box-shadow: 0 8px 24px rgba(32,52,42,.035); }
-      .atlas-canvas { min-height: 620px; overflow: auto; padding: 10px; }
-      .atlas-canvas svg { width: 100%; min-width: 780px; height: auto; transform-origin: center; transition: transform .18s ease; }
-      .edge line { stroke: #b8c6bd; stroke-width: 1.3; }
-      .edge.source line { stroke: #91ad9c; }
-      .edge.citation line { stroke: #c49c5c; stroke-dasharray: 5 6; }
-      .edge.exam line { stroke: #b98072; stroke-width: 1.6; }
-      .edge.plan line { stroke: #7faaa2; stroke-dasharray: 9 6; }
-      .edge.active line { stroke-width: 2.8; }
-      .edge.faded { opacity: .15; }
+      .mode-switch { display: inline-flex; width: max-content; padding: 3px; border: 1px solid #d7e1d8; border-radius: 999px; background: #eef4ef; }
+      .mode-switch button, .atlas-filters button, .canvas-controls button { border: 0; border-radius: 999px; padding: 7px 10px; color: #63756e; background: transparent; font-size: 11px; font-weight: 800; }
+      .mode-switch button.active, .atlas-filters button.active, .canvas-controls button.toggle-on { color: #fffefa; background: #2f5c55; box-shadow: 0 2px 8px rgba(47,92,85,.18); }
+      .atlas-filters { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+      .atlas-filters button { border: 1px solid #d8e2da; background: #fffefa; }
+      .atlas-workbench { display: grid; grid-template-columns: minmax(0, 1fr) 335px; gap: 0; min-height: 675px; }
+      .atlas-canvas { position: relative; min-height: 675px; overflow: auto; background: #e6eee7; }
+      .atlas-canvas svg { width: 100%; min-width: 860px; height: auto; min-height: 675px; transform-origin: center; transition: transform .18s ease; }
+      .canvas-card { position: absolute; z-index: 1; border: 1px solid rgba(210,224,214,.82); border-radius: 13px; background: rgba(255,254,250,.83); box-shadow: 0 10px 28px rgba(35,55,48,.09); backdrop-filter: blur(14px); }
+      .canvas-status { top: 16px; left: 16px; display: grid; gap: 3px; max-width: 265px; padding: 12px 13px; }
+      .canvas-status span { color: #6c7c74; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .09em; }
+      .canvas-status strong { color: #253936; font-size: 13px; }
+      .canvas-status small { color: #73837c; font-size: 10px; line-height: 1.35; }
+      .canvas-controls { left: 16px; bottom: 16px; display: flex; align-items: center; gap: 10px; padding: 9px; }
+      .canvas-controls label { display: flex; align-items: center; gap: 7px; color: #62746c; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; }
+      .canvas-controls label.disabled { opacity: .38; }
+      .canvas-controls input { width: 92px; accent-color: #497970; }
+      .edge line { stroke: #aebdb3; stroke-width: 1.25; }
+      .edge.structure line { stroke: #c5cec8; }
+      .edge.source line { stroke: #86a594; }
+      .edge.citation line { stroke: #c69c57; stroke-dasharray: 5 6; }
+      .edge.exam line { stroke: #b8796c; stroke-width: 1.6; }
+      .edge.plan line { stroke: #78a8a0; stroke-dasharray: 9 6; }
+      .edge.active line { stroke-width: 3; }
+      .edge.faded { opacity: .12; }
       .edge text { fill: #53655e; font-size: 10px; font-weight: 800; paint-order: stroke; stroke: #f5faf3; stroke-width: 4px; }
       .node { cursor: pointer; outline: none; transition: opacity .16s ease; }
       .node-halo { fill: transparent; stroke: transparent; stroke-width: 1; }
-      .node-circle { fill: #dce9df; stroke: #bdd2c4; stroke-width: 2; filter: drop-shadow(0 4px 7px rgba(36,57,49,.12)); }
+      .node-circle { fill: #dce9df; stroke: #bdd2c4; stroke-width: 2; filter: drop-shadow(0 5px 8px rgba(30,48,42,.14)); transition: stroke-width .14s ease, filter .14s ease; }
       .node.course .node-circle { fill: #21383d; stroke: #21383d; }
       .node.module .node-circle { fill: #dfe8d6; stroke: #bdcdb6; }
       .node.topic .node-circle { fill: #7fb69a; stroke: #568b78; }
@@ -504,40 +581,50 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
       .node.cards .node-circle { fill: #f5dec0; stroke: #c78b47; }
       .node.exam .node-circle { fill: #f1d7d1; stroke: #b97567; }
       .node.block .node-circle { fill: #d8ece9; stroke: #79a59e; }
-      .node.active .node-halo, .node.connected .node-halo { fill: rgba(255,254,250,.46); stroke: rgba(58,113,94,.45); }
-      .node.active .node-circle { stroke-width: 4; }
-      .node.faded { opacity: .22; }
+      .node.active .node-halo, .node.connected .node-halo { fill: rgba(255,254,250,.38); stroke: rgba(58,113,94,.38); }
+      .node.active .node-circle { stroke-width: 4; filter: drop-shadow(0 8px 12px rgba(39,92,78,.25)); }
+      .node.faded { opacity: .18; }
       .node-glyph { fill: #243535; font-size: 12px; font-weight: 900; pointer-events: none; }
       .node.course .node-glyph, .node.topic .node-glyph, .node.source .node-glyph { fill: #fffefa; }
-      .node-label { fill: #30413d; font-size: 11px; font-weight: 800; paint-order: stroke; stroke: #f5faf3; stroke-width: 4px; pointer-events: none; }
-      .atlas-panel { padding: 22px; min-height: 620px; }
-      .atlas-panel h2 { margin: 0 0 8px; color: #263d37; font: 25px Georgia, serif; font-weight: 500; letter-spacing: -.4px; }
+      .node-label { fill: #30413d; font-size: 11px; font-weight: 850; paint-order: stroke; stroke: #f5faf3; stroke-width: 4px; pointer-events: none; }
+      .atlas-panel { border-left: 1px solid #d7e2d9; background: #fffefa; padding: 24px; overflow: auto; }
+      .panel-type { display: flex; align-items: center; gap: 7px; color: #6d7d75; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .09em; margin-bottom: 12px; }
+      .panel-type span, .legend i { width: 9px; height: 9px; border-radius: 50%; background: #7fb69a; }
+      .panel-type span.course { background: #21383d; }
+      .panel-type span.module { background: #bdcdb6; }
+      .panel-type span.source { background: #486a80; }
+      .panel-type span.note { background: #d5ad68; }
+      .panel-type span.cards { background: #c78b47; }
+      .panel-type span.exam { background: #b97567; }
+      .panel-type span.block { background: #79a59e; }
+      .atlas-panel h2 { margin: 0 0 8px; color: #263d37; font: 26px Georgia, serif; font-weight: 500; letter-spacing: -.5px; }
       .atlas-panel p:not(.eyebrow) { margin: 0 0 16px; color: #64746e; font-size: 12px; line-height: 1.55; }
       .atlas-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }
       .atlas-meta span, .legend span { border-radius: 999px; padding: 6px 8px; color: #53675f; background: #eef4ef; font-size: 10px; font-weight: 800; }
-      .connection-list { display: grid; gap: 7px; margin-top: 24px; }
+      .panel-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+      .connection-list { display: grid; gap: 7px; margin-top: 8px; }
       .connection-list > strong { color: #31413d; font-size: 12px; }
-      .connection-list button { display: grid; gap: 3px; border: 1px solid #e1e8e2; border-radius: 9px; padding: 10px; background: #fbfcf8; text-align: left; color: #2d3d39; }
+      .connection-list button { display: grid; gap: 3px; border: 1px solid #e1e8e2; border-radius: 10px; padding: 11px; background: #fbfcf8; text-align: left; color: #2d3d39; }
+      .connection-list button:hover { border-color: #bed3c4; background: #f3f8f4; }
       .connection-list button span { color: #6f8179; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
-      .connection-list button b { font-size: 11px; }
+      .connection-list button b { font-size: 12px; }
       .connection-list button small { color: #6b7b75; font-size: 10px; }
       .legend { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
       .legend span { display: flex; align-items: center; gap: 5px; }
-      .legend i { width: 9px; height: 9px; border-radius: 50%; background: #7fb69a; }
       .legend i.source { background: #486a80; }
       .legend i.note { background: #d5ad68; }
       .legend i.cards { background: #c78b47; }
       .legend i.exam { background: #b97567; }
       .legend i.block { background: #79a59e; }
-      .atlas-insights { margin-top: 16px; padding: 22px; }
+      .atlas-insights { margin-top: 16px; padding: 22px; border: 1px solid #dce6de; border-radius: 15px; background: #fffefa; box-shadow: 0 8px 24px rgba(32,52,42,.035); }
       .insight-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-top: 15px; }
       .insight-grid button { display: grid; gap: 5px; border: 1px solid #e1e7e1; border-radius: 10px; padding: 13px; color: #2d3d39; background: #fffefa; text-align: left; }
       .insight-grid span { width: max-content; border-radius: 999px; padding: 4px 7px; color: #9a683d; background: #fff1dc; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
       .insight-grid strong { font-size: 12px; }
       .insight-grid small, .insight-empty { color: #6d7d76; font-size: 11px; line-height: 1.45; }
       .insight-empty { margin-top: 12px; padding: 14px; border-radius: 9px; background: #eef6f0; }
-      @media (max-width: 1080px) { .atlas-page { padding: 40px 34px 80px; }.atlas-layout { grid-template-columns: 1fr; }.atlas-panel { min-height: 0; }.insight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-      @media (max-width: 700px) { .atlas-page { padding: 30px 18px 70px; }.atlas-header, .atlas-tools { display: grid; }.atlas-header h1 { font-size: 39px; }.zoom-control { display: none; }.insight-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 1120px) { .atlas-page { padding: 40px 34px 80px; }.atlas-commandbar, .atlas-workbench { grid-template-columns: 1fr; }.atlas-filters { justify-content: flex-start; }.atlas-panel { border-left: 0; border-top: 1px solid #d7e2d9; }.insight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 700px) { .atlas-page { padding: 30px 18px 70px; }.atlas-header { display: grid; }.atlas-header h1 { font-size: 39px; }.atlas-stats { justify-content: flex-start; }.canvas-controls { position: static; margin: 10px; flex-wrap: wrap; }.canvas-status { position: static; margin: 10px 10px 0; }.insight-grid { grid-template-columns: 1fr; } }
     `}</style>
   </div>;
 }
