@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type WheelEvent } from "react";
 import type { StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyTopic } from "./types";
 
 type AtlasKind = "course" | "module" | "topic" | "source" | "note" | "cards" | "exam" | "block";
@@ -145,13 +145,13 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
     const nextNodes: AtlasNode[] = [];
     const nextEdges: AtlasEdge[] = [];
     const topicPositions = new Map<string, { x: number; y: number; angle: number }>();
-    const center = { x: 500, y: 350 };
+    const center = { x: 600, y: 420 };
 
     const topicCount = topics.length;
     topics.forEach((topic, index) => {
       const angle = topicCount <= 1 ? -Math.PI / 2 : -Math.PI / 2 + (index / topicCount) * Math.PI * 2;
-      const x = topicCount <= 1 ? center.x : center.x + Math.cos(angle) * 265;
-      const y = topicCount <= 1 ? center.y : center.y + Math.sin(angle) * 190;
+      const x = topicCount <= 1 ? center.x : center.x + Math.cos(angle) * 385;
+      const y = topicCount <= 1 ? center.y : center.y + Math.sin(angle) * 275;
       topicPositions.set(topic.id, { x, y, angle });
     });
 
@@ -176,8 +176,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         kind: "course",
         label: course.name,
         subtitle: [course.programme, course.academicYear].filter(Boolean).join(" · ") || "Course",
-        x: center.x + Math.cos(courseAngle) * 92,
-        y: center.y + Math.sin(courseAngle) * 72,
+        x: center.x + Math.cos(courseAngle) * 130,
+        y: center.y + Math.sin(courseAngle) * 95,
         radius: 24,
         weight: 7,
         courseId: course.id,
@@ -187,16 +187,16 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
 
       course.modules.forEach((module) => {
         const moduleTopics = module.topics.map((topic) => topicPositions.get(topic.id)).filter(Boolean) as Array<{ x: number; y: number; angle: number }>;
-        const averageX = moduleTopics.length ? moduleTopics.reduce((sum, topic) => sum + topic.x, 0) / moduleTopics.length : center.x + Math.cos(courseAngle) * 145;
-        const averageY = moduleTopics.length ? moduleTopics.reduce((sum, topic) => sum + topic.y, 0) / moduleTopics.length : center.y + Math.sin(courseAngle) * 115;
+        const averageX = moduleTopics.length ? moduleTopics.reduce((sum, topic) => sum + topic.x, 0) / moduleTopics.length : center.x + Math.cos(courseAngle) * 210;
+        const averageY = moduleTopics.length ? moduleTopics.reduce((sum, topic) => sum + topic.y, 0) / moduleTopics.length : center.y + Math.sin(courseAngle) * 160;
         const moduleNodeId = `module:${module.id}`;
         nextNodes.push({
           id: moduleNodeId,
           kind: "module",
           label: module.name,
           subtitle: course.name,
-          x: center.x + (averageX - center.x) * 0.58,
-          y: center.y + (averageY - center.y) * 0.58,
+          x: center.x + (averageX - center.x) * 0.55,
+          y: center.y + (averageY - center.y) * 0.55,
           radius: 19,
           weight: 5,
           courseId: course.id,
@@ -244,8 +244,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
           kind: "cards",
           label: `${topicCards.filter((card) => card.isKept).length}/${topicCards.length} kept`,
           subtitle: `${topic.name} card queue`,
-          x: clamp(position.x + Math.cos(position.angle + 0.65) * 88, 58, 942),
-          y: clamp(position.y + Math.sin(position.angle + 0.65) * 88, 62, 658),
+          x: clamp(position.x + Math.cos(position.angle + 0.65) * 126, 70, 1130),
+          y: clamp(position.y + Math.sin(position.angle + 0.65) * 126, 72, 788),
           radius: 18,
           weight: 4,
           topicId: topic.id,
@@ -263,8 +263,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
           kind: "block",
           label: `${Math.round(minutes / 60)}h planned`,
           subtitle: `${upcomingBlocks.length} upcoming ${upcomingBlocks.length === 1 ? "block" : "blocks"}`,
-          x: clamp(position.x + Math.cos(position.angle - 0.75) * 88, 58, 942),
-          y: clamp(position.y + Math.sin(position.angle - 0.75) * 88, 62, 658),
+          x: clamp(position.x + Math.cos(position.angle - 0.75) * 126, 70, 1130),
+          y: clamp(position.y + Math.sin(position.angle - 0.75) * 126, 72, 788),
           radius: 17,
           weight: 3,
           topicId: topic.id,
@@ -285,8 +285,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         kind: "source",
         label: document.title,
         subtitle: `${document.kind === "textbook" ? "Textbook" : document.kind === "lecture" ? "Lecture" : "PDF"} · ${document.status === "ready" ? `${document.pageCount ?? "?"} pages ready` : document.status}`,
-        x: clamp(averageX + Math.cos(awayAngle) * 92, 56, 944),
-        y: clamp(averageY + Math.sin(awayAngle) * 92, 60, 660),
+        x: clamp(averageX + Math.cos(awayAngle) * 142, 70, 1130),
+        y: clamp(averageY + Math.sin(awayAngle) * 142, 72, 788),
         radius: 20,
         weight: 4,
         documentId: document.id,
@@ -305,8 +305,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         kind: "note",
         label: note.title,
         subtitle: note.citations.length ? `${plural(note.citations.length, "citation")} · ${note.images.length ? plural(note.images.length, "image") : "text note"}` : note.images.length ? plural(note.images.length, "image") : "Manual note",
-        x: clamp(position.x + Math.cos(position.angle + Math.PI + spread) * 82, 58, 942),
-        y: clamp(position.y + Math.sin(position.angle + Math.PI + spread) * 82, 62, 658),
+        x: clamp(position.x + Math.cos(position.angle + Math.PI + spread) * 118, 70, 1130),
+        y: clamp(position.y + Math.sin(position.angle + Math.PI + spread) * 118, 72, 788),
         radius: 16,
         weight: 3,
         topicId: note.topicId,
@@ -331,8 +331,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         kind: "exam",
         label: exam.title,
         subtitle: `${formatDate(exam.examDate)} · ${Math.round(exam.targetMinutes / 60)}h target`,
-        x: clamp(averageX + 92, 70, 930),
-        y: clamp(averageY - 55, 62, 658),
+        x: clamp(averageX + 150, 80, 1120),
+        y: clamp(averageY - 88, 72, 788),
         radius: 20,
         weight: 5,
         examId: exam.id,
@@ -415,6 +415,13 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
     }
   };
 
+  const handleCanvasWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLInputElement) return;
+    event.preventDefault();
+    const zoomDelta = event.deltaY > 0 ? -0.08 : 0.08;
+    setZoom((currentZoom) => Number(clamp(currentZoom + zoomDelta, 0.65, 1.8).toFixed(2)));
+  };
+
   if (!topics.length) {
     return <div className="atlas-empty"><p className="eyebrow">Mind map</p><h1>Your Study Atlas starts with one topic.</h1><p>Create a course topic, then MedCompass will automatically map every source, note, card, citation, exam, and study block that connects to it.</p><button className="button primary" onClick={onCreateTopic}>Create your first topic →</button><style jsx>{`.atlas-empty { max-width: 760px; margin: 0 auto; padding: 88px 58px; }.atlas-empty h1 { margin: 0 0 12px; color: #202b2e; font: 52px Georgia, serif; font-weight: 500; letter-spacing: -1.8px; }.atlas-empty p:not(.eyebrow) { max-width: 580px; margin: 0 0 24px; color: #66746f; font-size: 14px; line-height: 1.6; }`}</style></div>;
   }
@@ -444,19 +451,19 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
       </div>
 
       <div className="atlas-workbench">
-        <div className="atlas-canvas">
+        <div className="atlas-canvas" onWheel={handleCanvasWheel}>
           <div className="canvas-card canvas-status">
             <span>{graphMode === "local" ? "Local graph" : "Global graph"}</span>
             <strong>{graphMode === "local" ? focusNode?.label ?? "Study Atlas" : "Whole workspace"}</strong>
-            <small>{graphMode === "local" ? `Depth ${localDepth} · ${visibleNodes.length} visible` : "Hover to reveal neighbours · click to inspect"}</small>
+            <small>{graphMode === "local" ? `Depth ${localDepth} · ${visibleNodes.length} visible` : "Scroll to zoom · hover to reveal neighbours"}</small>
           </div>
           <div className="canvas-card canvas-controls" aria-label="Graph display controls">
-            <label>Zoom <input type="range" min="0.75" max="1.35" step="0.05" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /></label>
+            <label>Zoom <input type="range" min="0.65" max="1.8" step="0.05" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /></label>
             <label>Node size <input type="range" min="0.8" max="1.35" step="0.05" value={nodeScale} onChange={(event) => setNodeScale(Number(event.target.value))} /></label>
             <label className={graphMode === "local" ? "" : "disabled"}>Depth <input disabled={graphMode !== "local"} type="range" min="1" max="3" step="1" value={localDepth} onChange={(event) => setLocalDepth(Number(event.target.value))} /></label>
             <button className={showLabels ? "toggle-on" : ""} onClick={() => setShowLabels((current) => !current)}>{showLabels ? "Labels on" : "Labels quiet"}</button>
           </div>
-          <svg viewBox="0 0 1000 720" role="img" aria-label="Interactive study atlas mind map" style={{ transform: `scale(${zoom})` }}>
+          <svg viewBox="0 0 1200 860" role="img" aria-label="Interactive study atlas mind map" style={{ transform: `scale(${zoom})` }}>
             <defs>
               <radialGradient id="atlasGlow" cx="50%" cy="42%" r="68%">
                 <stop offset="0%" stopColor="#fbfbf3" />
@@ -466,9 +473,17 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
               <pattern id="atlasGrid" width="32" height="32" patternUnits="userSpaceOnUse">
                 <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#d5dfd8" strokeWidth="0.7" opacity="0.55" />
               </pattern>
+              <radialGradient id="courseNodeGradient" cx="36%" cy="28%" r="72%"><stop offset="0%" stopColor="#406066" /><stop offset="100%" stopColor="#172d32" /></radialGradient>
+              <radialGradient id="moduleNodeGradient" cx="35%" cy="28%" r="72%"><stop offset="0%" stopColor="#f4f7e9" /><stop offset="100%" stopColor="#c4d3bc" /></radialGradient>
+              <radialGradient id="topicNodeGradient" cx="35%" cy="28%" r="72%"><stop offset="0%" stopColor="#a9d3b8" /><stop offset="100%" stopColor="#4f9278" /></radialGradient>
+              <radialGradient id="sourceNodeGradient" cx="35%" cy="28%" r="72%"><stop offset="0%" stopColor="#7798ad" /><stop offset="100%" stopColor="#395c74" /></radialGradient>
+              <radialGradient id="noteNodeGradient" cx="35%" cy="28%" r="72%"><stop offset="0%" stopColor="#fff9e9" /><stop offset="100%" stopColor="#dfb765" /></radialGradient>
+              <radialGradient id="cardNodeGradient" cx="35%" cy="28%" r="72%"><stop offset="0%" stopColor="#fdeccc" /><stop offset="100%" stopColor="#c1833a" /></radialGradient>
+              <radialGradient id="examNodeGradient" cx="35%" cy="28%" r="72%"><stop offset="0%" stopColor="#f8e1dc" /><stop offset="100%" stopColor="#b66f61" /></radialGradient>
+              <radialGradient id="blockNodeGradient" cx="35%" cy="28%" r="72%"><stop offset="0%" stopColor="#e8f7f2" /><stop offset="100%" stopColor="#70a39a" /></radialGradient>
             </defs>
-            <rect width="1000" height="720" rx="28" fill="url(#atlasGlow)" />
-            <rect width="1000" height="720" rx="28" fill="url(#atlasGrid)" opacity="0.55" />
+            <rect width="1200" height="860" rx="32" fill="url(#atlasGlow)" />
+            <rect width="1200" height="860" rx="32" fill="url(#atlasGrid)" opacity="0.48" />
             {visibleEdges.map((edge) => {
               const source = nodeById.get(edge.source);
               const target = nodeById.get(edge.target);
@@ -489,8 +504,10 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
               return <g key={node.id} className={`node ${node.kind} ${active ? "active" : ""} ${connected ? "connected" : ""} ${faded ? "faded" : ""}`} transform={`translate(${node.x} ${node.y})`} onMouseEnter={() => setHoveredNodeId(node.id)} onMouseLeave={() => setHoveredNodeId(null)} onClick={() => setSelectedNodeId(node.id)} tabIndex={0} role="button" aria-label={`${kindLabels[node.kind]}: ${node.label}`} onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") setSelectedNodeId(node.id);
               }}>
+                <ellipse cx="0" cy={radius * 0.52} rx={radius * 0.84} ry={radius * 0.24} className="node-shadow" />
                 <circle r={radius + 13} className="node-halo" />
                 <circle r={radius} className="node-circle" />
+                <circle r={Math.max(5, radius * 0.35)} cx={-radius * 0.22} cy={-radius * 0.26} className="node-sheen" />
                 <text className="node-glyph" textAnchor="middle" dy={node.kind === "source" ? "0.32em" : "0.35em"}>{nodeGlyphs[node.kind]}</text>
                 {(showLabels || active || connected) && <text className="node-label" textAnchor="middle" y={radius + 18}>{label}</text>}
               </g>;
@@ -550,8 +567,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
       .atlas-filters { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
       .atlas-filters button { border: 1px solid #d8e2da; background: #fffefa; }
       .atlas-workbench { display: grid; grid-template-columns: minmax(0, 1fr) 335px; gap: 0; min-height: 675px; }
-      .atlas-canvas { position: relative; min-height: 675px; overflow: auto; background: #e6eee7; }
-      .atlas-canvas svg { width: 100%; min-width: 860px; height: auto; min-height: 675px; transform-origin: center; transition: transform .18s ease; }
+      .atlas-canvas { position: relative; min-height: 720px; overflow: auto; background: #e6eee7; overscroll-behavior: contain; }
+      .atlas-canvas svg { width: 100%; min-width: 1040px; height: auto; min-height: 720px; transform-origin: center; transition: transform .18s ease; }
       .canvas-card { position: absolute; z-index: 1; border: 1px solid rgba(210,224,214,.82); border-radius: 13px; background: rgba(255,254,250,.83); box-shadow: 0 10px 28px rgba(35,55,48,.09); backdrop-filter: blur(14px); }
       .canvas-status { top: 16px; left: 16px; display: grid; gap: 3px; max-width: 265px; padding: 12px 13px; }
       .canvas-status span { color: #6c7c74; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .09em; }
@@ -561,8 +578,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
       .canvas-controls label { display: flex; align-items: center; gap: 7px; color: #62746c; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .07em; }
       .canvas-controls label.disabled { opacity: .38; }
       .canvas-controls input { width: 92px; accent-color: #497970; }
-      .edge line { stroke: #aebdb3; stroke-width: 1.25; }
-      .edge.structure line { stroke: #c5cec8; }
+      .edge line { stroke: #aebdb3; stroke-width: 1.15; }
+      .edge.structure line { stroke: #c8d2cb; }
       .edge.source line { stroke: #86a594; }
       .edge.citation line { stroke: #c69c57; stroke-dasharray: 5 6; }
       .edge.exam line { stroke: #b8796c; stroke-width: 1.6; }
@@ -572,17 +589,19 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
       .edge text { fill: #53655e; font-size: 10px; font-weight: 800; paint-order: stroke; stroke: #f5faf3; stroke-width: 4px; }
       .node { cursor: pointer; outline: none; transition: opacity .16s ease; }
       .node-halo { fill: transparent; stroke: transparent; stroke-width: 1; }
-      .node-circle { fill: #dce9df; stroke: #bdd2c4; stroke-width: 2; filter: drop-shadow(0 5px 8px rgba(30,48,42,.14)); transition: stroke-width .14s ease, filter .14s ease; }
-      .node.course .node-circle { fill: #21383d; stroke: #21383d; }
-      .node.module .node-circle { fill: #dfe8d6; stroke: #bdcdb6; }
-      .node.topic .node-circle { fill: #7fb69a; stroke: #568b78; }
-      .node.source .node-circle { fill: #486a80; stroke: #3b5870; }
-      .node.note .node-circle { fill: #fff6df; stroke: #d5ad68; }
-      .node.cards .node-circle { fill: #f5dec0; stroke: #c78b47; }
-      .node.exam .node-circle { fill: #f1d7d1; stroke: #b97567; }
-      .node.block .node-circle { fill: #d8ece9; stroke: #79a59e; }
+      .node-shadow { fill: rgba(38,55,48,.16); filter: blur(3px); pointer-events: none; }
+      .node-circle { fill: #dce9df; stroke: rgba(255,254,250,.72); stroke-width: 2.6; filter: drop-shadow(0 7px 10px rgba(30,48,42,.16)); transition: stroke-width .14s ease, filter .14s ease; }
+      .node-sheen { fill: rgba(255,254,250,.33); pointer-events: none; }
+      .node.course .node-circle { fill: url(#courseNodeGradient); stroke: rgba(255,254,250,.22); }
+      .node.module .node-circle { fill: url(#moduleNodeGradient); stroke: rgba(104,123,102,.28); }
+      .node.topic .node-circle { fill: url(#topicNodeGradient); stroke: rgba(255,254,250,.42); }
+      .node.source .node-circle { fill: url(#sourceNodeGradient); stroke: rgba(255,254,250,.35); }
+      .node.note .node-circle { fill: url(#noteNodeGradient); stroke: rgba(151,108,49,.18); }
+      .node.cards .node-circle { fill: url(#cardNodeGradient); stroke: rgba(151,93,35,.2); }
+      .node.exam .node-circle { fill: url(#examNodeGradient); stroke: rgba(151,78,66,.2); }
+      .node.block .node-circle { fill: url(#blockNodeGradient); stroke: rgba(69,123,114,.22); }
       .node.active .node-halo, .node.connected .node-halo { fill: rgba(255,254,250,.38); stroke: rgba(58,113,94,.38); }
-      .node.active .node-circle { stroke-width: 4; filter: drop-shadow(0 8px 12px rgba(39,92,78,.25)); }
+      .node.active .node-circle { stroke-width: 4.2; filter: drop-shadow(0 11px 16px rgba(39,92,78,.28)); }
       .node.faded { opacity: .18; }
       .node-glyph { fill: #243535; font-size: 12px; font-weight: 900; pointer-events: none; }
       .node.course .node-glyph, .node.topic .node-glyph, .node.source .node-glyph { fill: #fffefa; }
