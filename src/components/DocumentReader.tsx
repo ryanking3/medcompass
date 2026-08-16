@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import { NoteInlineContent, localNoteImageToken, noteImageToken, type InlineNoteImage } from "@/components/NoteInlineContent";
-import type { StudyDocument, StudyNote } from "@/components/types";
+import type { AiSourceAction, AiSourceStudyResponse } from "@/lib/ai/types";
+import type { StudyDocument, StudyFlashcard, StudyNote } from "@/components/types";
 
 const PdfContinuousViewer = dynamic(() => import("@/components/PdfContinuousViewer"), {
   ssr: false,
@@ -19,6 +20,8 @@ type DocumentReaderProps = {
   onDocumentUpdated: (document: StudyDocument) => void;
   onNoteCreated: (note: StudyNote) => void;
   onOpenNotesForTopic: (topicId: string) => void;
+  onCardCreated: (card: StudyFlashcard) => void;
+  onOpenCardsForTopic: (topicId: string) => void;
 };
 
 const statusCopy = {
@@ -47,7 +50,7 @@ function titleFromSelection(selection: string, fallback: string) {
   return compactSelection.length > 72 ? `${compactSelection.slice(0, 69)}…` : compactSelection;
 }
 
-export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCreated, onOpenNotesForTopic }: DocumentReaderProps) {
+export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCreated, onOpenNotesForTopic, onCardCreated, onOpenCardsForTopic }: DocumentReaderProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isPreparing, setIsPreparing] = useState(false);
@@ -65,6 +68,14 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
   const [noteComposerOpen, setNoteComposerOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState({ title: "", body: "", excerpt: "", page: 1 });
   const [pendingNoteImages, setPendingNoteImages] = useState<PendingNoteImage[]>([]);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+  const [aiAction, setAiAction] = useState<AiSourceAction>("ask");
+  const [aiSelection, setAiSelection] = useState("");
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiResult, setAiResult] = useState<AiSourceStudyResponse | null>(null);
+  const [aiFeedback, setAiFeedback] = useState("");
+  const [isAiWorking, setIsAiWorking] = useState(false);
+  const [createdAiCardTopicId, setCreatedAiCardTopicId] = useState<string | null>(null);
   const noteImageInputRef = useRef<HTMLInputElement | null>(null);
   const noteModalBodyRef = useRef<HTMLTextAreaElement | null>(null);
   const canvasRef = useRef<HTMLElement | null>(null);
@@ -164,6 +175,94 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
     } catch {
       setPreparationError("We couldn’t copy the citation from this browser. You can still cite the current page manually.");
     }
+  }
+
+  function selectedPdfText() {
+    return globalThis.getSelection?.()?.toString().replace(/\s+/g, " ").trim() ?? "";
+  }
+
+  function openAiAssistant(action: AiSourceAction) {
+    const selection = selectedPdfText();
+    setAiAction(action);
+    setAiSelection(selection);
+    setAiQuestion(selection ? "Explain this section in a way I can study from." : "What should I understand from this page?");
+    setAiResult(null);
+    setAiFeedback("");
+    setCreatedAiCardTopicId(null);
+    setAiAssistantOpen(true);
+  }
+
+  async function runAiAssistant(nextAction = aiAction) {
+    if (isAiWorking) return;
+    setIsAiWorking(true);
+    setAiFeedback("");
+    setCreatedAiCardTopicId(null);
+    const response = await fetch("/api/ai/source-study", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: nextAction,
+        question: aiQuestion,
+        selectedText: aiSelection,
+        documentId: document.id,
+        topicId: selectedNoteTopicId || undefined,
+        page: visiblePage,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setIsAiWorking(false);
+    if (!response.ok) {
+      setAiFeedback(result.error ?? "The fake AI assistant couldn't prepare that draft.");
+      return;
+    }
+    setAiAction(nextAction);
+    setAiResult(result as AiSourceStudyResponse);
+  }
+
+  function useAiNoteDraft() {
+    if (!aiResult?.noteDraft || !selectedNoteTopicId) return;
+    const draft = aiResult.noteDraft;
+    setNoteDraft({
+      title: draft.title,
+      body: draft.body,
+      excerpt: draft.citation.excerpt ?? aiSelection,
+      page: draft.citation.pageStart ?? visiblePage,
+    });
+    pendingNoteImages.forEach((image) => URL.revokeObjectURL(image.signedUrl));
+    setPendingNoteImages([]);
+    setNoteFeedback("");
+    setCreatedNoteTopicId(null);
+    setAiAssistantOpen(false);
+    setNoteComposerOpen(true);
+  }
+
+  async function saveAiFlashcardDraft() {
+    if (!aiResult?.flashcardDraft || !selectedNoteTopicId || isAiWorking) return;
+    setIsAiWorking(true);
+    setAiFeedback("");
+    const draft = aiResult.flashcardDraft;
+    const response = await fetch("/api/flashcards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topicId: selectedNoteTopicId,
+        kind: draft.kind,
+        front: draft.front,
+        back: draft.back,
+        sourceDocumentId: document.id,
+        sourcePageStart: draft.source.pageStart ?? visiblePage,
+        sourcePageEnd: draft.source.pageEnd ?? draft.source.pageStart ?? visiblePage,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setIsAiWorking(false);
+    if (!response.ok) {
+      setAiFeedback(result.error ?? "We couldn't save that AI card draft.");
+      return;
+    }
+    onCardCreated(result.card as StudyFlashcard);
+    setCreatedAiCardTopicId(selectedNoteTopicId);
+    setAiFeedback("AI flashcard draft saved to this topic.");
   }
 
   function openNoteComposer() {
@@ -395,10 +494,44 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
               <button className="reader-note-action" onClick={openNoteComposer} disabled={!selectedNoteTopicId || isCreatingNote}>{isCreatingNote ? "Saving…" : "Write note"}</button>
               {noteFeedback && <div className={createdNoteTopicId ? "reader-note-success" : "reader-note-message"} role="status"><p>{noteFeedback}</p>{createdNoteTopicId && <button onClick={() => onOpenNotesForTopic(createdNoteTopicId)}>Open note →</button>}</div>}
             </div>
-            <button disabled><span>✦</span><div><strong>Ask this source</strong><small>Coming with AI integration</small></div></button>
+            <button onClick={() => openAiAssistant("ask")}><span>✦</span><div><strong>Ask AI about selection</strong><small>{extractionReady ? "Fake AI now · real provider later" : "Works best after extraction"}</small></div></button>
+            <button onClick={() => openAiAssistant("note")} disabled={!selectedNoteTopicId}><span>✎</span><div><strong>AI note draft</strong><small>Uses the note template and source citation</small></div></button>
+            <button onClick={() => openAiAssistant("flashcard")} disabled={!selectedNoteTopicId}><span>◇</span><div><strong>AI flashcard draft</strong><small>One idea, one card, source-linked</small></div></button>
           </div>
         </aside>
       </div>
+      {aiAssistantOpen && <div className="reader-modal-backdrop">
+        <section className="reader-ai-modal" role="dialog" aria-modal="true" aria-labelledby="reader-ai-title">
+          <div className="reader-note-modal-heading">
+            <div>
+              <p className="eyebrow">AI study tools · fake mode</p>
+              <h2 id="reader-ai-title">Source-aware assistant</h2>
+            </div>
+            <button onClick={() => setAiAssistantOpen(false)} aria-label="Close AI assistant">×</button>
+          </div>
+          <div className="reader-ai-context">
+            <strong>{document.title}, p. {visiblePage}</strong>
+            <p>{aiSelection || "No text selected. The fake assistant will use the current page citation and a placeholder context."}</p>
+          </div>
+          <div className="reader-ai-actions" aria-label="AI action">
+            <button className={aiAction === "ask" ? "active" : ""} onClick={() => { setAiAction("ask"); setAiResult(null); }}>Ask</button>
+            <button className={aiAction === "note" ? "active" : ""} onClick={() => { setAiAction("note"); setAiResult(null); }}>Note draft</button>
+            <button className={aiAction === "flashcard" ? "active" : ""} onClick={() => { setAiAction("flashcard"); setAiResult(null); }}>Card draft</button>
+          </div>
+          {aiAction === "ask" && <label className="reader-note-modal-field">Question<textarea value={aiQuestion} onChange={(event) => setAiQuestion(event.target.value)} placeholder="Ask about the selected source text…" /></label>}
+          <div className="reader-ai-run-row">
+            <button className="button primary" onClick={() => runAiAssistant()} disabled={isAiWorking || (aiAction === "ask" && !aiQuestion.trim())}>{isAiWorking ? "Drafting…" : aiAction === "ask" ? "Ask fake AI" : aiAction === "note" ? "Draft note" : "Draft flashcard"}</button>
+            <small>Later this endpoint will call OpenAI with the same structured request.</small>
+          </div>
+          {aiFeedback && <p className="reader-note-modal-error" role="status">{aiFeedback}</p>}
+          {aiResult && <div className="reader-ai-result">
+            {aiResult.answer && <article><p className="eyebrow">Answer</p><p>{aiResult.answer}</p></article>}
+            {aiResult.noteDraft && <article><p className="eyebrow">Note draft</p><h3>{aiResult.noteDraft.title}</h3><pre>{aiResult.noteDraft.body}</pre><button className="button dark" onClick={useAiNoteDraft}>Open in note composer →</button></article>}
+            {aiResult.flashcardDraft && <article><p className="eyebrow">Flashcard draft</p><h3>{aiResult.flashcardDraft.front}</h3><p>{aiResult.flashcardDraft.back}</p><div className="reader-ai-checklist">{aiResult.flashcardDraft.qualityChecklist.map((item) => <span key={item}>{item}</span>)}</div><button className="button dark" onClick={saveAiFlashcardDraft} disabled={isAiWorking || Boolean(createdAiCardTopicId)}>{createdAiCardTopicId ? "Saved" : "Save card draft →"}</button>{createdAiCardTopicId && <button className="text-button" onClick={() => onOpenCardsForTopic(createdAiCardTopicId)}>Open cards →</button>}</article>}
+            <div className="reader-ai-standards"><p className="eyebrow">Applied standards</p>{aiResult.standards.map((standard) => <span key={standard}>{standard}</span>)}</div>
+          </div>}
+        </section>
+      </div>}
       {noteComposerOpen && <div className="reader-modal-backdrop">
         <section className="reader-note-modal" role="dialog" aria-modal="true" aria-labelledby="reader-note-title">
           <div className="reader-note-modal-heading">
@@ -1092,6 +1225,17 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
           box-shadow: 0 24px 70px rgba(24, 43, 36, .18);
         }
 
+        .reader-ai-modal {
+          width: min(820px, 100%);
+          max-height: calc(100vh - 48px);
+          overflow: auto;
+          padding: 24px;
+          border: 1px solid #dce6de;
+          border-radius: 16px;
+          background: #fffefa;
+          box-shadow: 0 24px 70px rgba(24, 43, 36, .18);
+        }
+
         .reader-note-modal-heading {
           display: flex;
           align-items: flex-start;
@@ -1142,6 +1286,125 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
           color: #65766f;
           font-size: 12px;
           line-height: 1.55;
+        }
+
+        .reader-ai-context {
+          margin-bottom: 16px;
+          padding: 13px;
+          border: 1px solid #d9e7dc;
+          border-radius: 10px;
+          background: #f0f7f1;
+        }
+
+        .reader-ai-context strong {
+          display: block;
+          color: #365f55;
+          font-size: 12px;
+        }
+
+        .reader-ai-context p {
+          max-height: 120px;
+          overflow: auto;
+          margin: 7px 0 0;
+          color: #65766f;
+          font-size: 12px;
+          line-height: 1.55;
+        }
+
+        .reader-ai-actions {
+          display: inline-flex;
+          gap: 4px;
+          margin-bottom: 14px;
+          padding: 4px;
+          border: 1px solid #dce6de;
+          border-radius: 999px;
+          background: #eef4ef;
+        }
+
+        .reader-ai-actions button {
+          border: 0;
+          border-radius: 999px;
+          padding: 8px 11px;
+          color: #63756e;
+          background: transparent;
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .reader-ai-actions button.active {
+          color: #fffefa;
+          background: #2f5c55;
+        }
+
+        .reader-ai-run-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin: 14px 0;
+        }
+
+        .reader-ai-run-row small {
+          color: #718078;
+          font-size: 11px;
+          line-height: 1.4;
+        }
+
+        .reader-ai-result {
+          display: grid;
+          gap: 12px;
+          margin-top: 16px;
+        }
+
+        .reader-ai-result article,
+        .reader-ai-standards {
+          padding: 15px;
+          border: 1px solid #e0e8e2;
+          border-radius: 11px;
+          background: #fbfcf9;
+        }
+
+        .reader-ai-result h3 {
+          margin: 0 0 9px;
+          color: #263d37;
+          font: 22px Georgia, serif;
+          font-weight: 500;
+        }
+
+        .reader-ai-result p:not(.eyebrow) {
+          margin: 0 0 12px;
+          color: #4f615b;
+          font-size: 13px;
+          line-height: 1.6;
+          white-space: pre-wrap;
+        }
+
+        .reader-ai-result pre {
+          overflow: auto;
+          margin: 0 0 13px;
+          color: #4f615b;
+          white-space: pre-wrap;
+          font: 13px/1.55 Georgia, serif;
+        }
+
+        .reader-ai-checklist,
+        .reader-ai-standards {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+        }
+
+        .reader-ai-checklist span,
+        .reader-ai-standards span {
+          border-radius: 999px;
+          padding: 6px 8px;
+          color: #53675f;
+          background: #edf4ee;
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        .reader-ai-result article .button {
+          margin-right: 10px;
         }
 
         .reader-note-modal-field {
