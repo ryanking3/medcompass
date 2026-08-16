@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.8",
+    "@xyflow/react": "^12.11.3",
     "next": "latest",
     "pdfjs-dist": "^5.4.296",
     "react": "latest",

@@ -1,8 +1,47 @@
 @import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
 
 :root { --ink: #1b2428; --muted: #66747a; --line: #dde2df; --canvas: #f8f8f4; --paper: #fffefa; --navy: #20343a; --sage: #dce9df; --teal: #497970; --gold: #c99841; --rose: #ac4d4d; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--canvas); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+.react-flow__pane { cursor: grab; }
+.react-flow__pane.dragging { cursor: grabbing; }
+.react-flow__node-atlasNode { border-radius: 16px; }
+.atlas-handle { width: 1px !important; height: 1px !important; min-width: 1px !important; min-height: 1px !important; opacity: 0; pointer-events: none; }
+.atlas-node-card { width: 220px; min-height: 118px; padding: 14px 14px 13px; border: 1px solid rgba(203,217,207,.92); border-radius: 16px; background: linear-gradient(145deg, rgba(255,254,250,.98), rgba(246,249,243,.94)); color: #263834; box-shadow: 0 16px 28px rgba(39,60,52,.12), 0 1px 0 rgba(255,255,255,.86) inset; transition: transform .16s ease, opacity .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.atlas-node-card:hover, .atlas-node-card.selected { transform: translateY(-2px); border-color: rgba(78,125,105,.55); box-shadow: 0 20px 36px rgba(38,75,62,.18), 0 0 0 4px rgba(112,158,133,.16); }
+.atlas-node-card.muted { opacity: .24; }
+.atlas-node-card.connected:not(.selected) { border-color: rgba(112,158,133,.48); box-shadow: 0 14px 26px rgba(39,60,52,.13), 0 0 0 3px rgba(112,158,133,.1); }
+.atlas-node-card .node-card-head { display: flex; align-items: center; gap: 7px; color: #718078; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .09em; }
+.atlas-node-card .node-kind-dot { width: 9px; height: 9px; border-radius: 50%; background: #7fb69a; box-shadow: 0 0 0 3px rgba(127,182,154,.12); }
+.atlas-node-card h3 { margin: 12px 0 6px; color: #263834; font: 21px Georgia, serif; font-weight: 500; letter-spacing: -.5px; line-height: 1.06; }
+.atlas-node-card p { margin: 0; color: #66756e; font-size: 11px; line-height: 1.42; }
+.atlas-node-card .node-chip-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 11px; }
+.atlas-node-card small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 999px; padding: 4px 7px; color: #566960; background: #edf4ee; font-size: 9px; font-weight: 800; }
+.atlas-node-card.course { color: #f7fbf7; border-color: rgba(30,54,58,.22); background: linear-gradient(145deg, #2c464b, #172f35); }
+.atlas-node-card.course h3, .atlas-node-card.course p, .atlas-node-card.course .node-card-head { color: #f7fbf7; }
+.atlas-node-card.course small { color: #20363a; background: #e6efe8; }
+.atlas-node-card.course .node-kind-dot { background: #fffefa; box-shadow: 0 0 0 3px rgba(255,254,250,.14); }
+.atlas-node-card.module { background: linear-gradient(145deg, #fbfcf4, #e3ead8); }
+.atlas-node-card.module .node-kind-dot { background: #b8c8a7; }
+.atlas-node-card.topic { width: 250px; min-height: 142px; border-color: rgba(91,142,120,.36); background: linear-gradient(145deg, #fdfef8, #e8f4eb); }
+.atlas-node-card.topic .node-kind-dot { background: #5f9f7d; }
+.atlas-node-card.source { width: 210px; background: linear-gradient(145deg, #fbfcf9, #e8eef2); }
+.atlas-node-card.source .node-kind-dot { background: #486a80; }
+.atlas-node-card.note { width: 210px; transform: rotate(-.6deg); background: linear-gradient(145deg, #fffefa, #fff4da); }
+.atlas-node-card.note.selected, .atlas-node-card.note:hover { transform: rotate(-.6deg) translateY(-2px); }
+.atlas-node-card.note .node-kind-dot { background: #d2a151; }
+.atlas-node-card.cards { width: 176px; min-height: 104px; background: linear-gradient(145deg, #fff8ed, #f4dcc0); }
+.atlas-node-card.cards .node-kind-dot { background: #c1833a; }
+.atlas-node-card.exam { width: 218px; background: linear-gradient(145deg, #fff9f7, #f2dcd6); }
+.atlas-node-card.exam .node-kind-dot { background: #b97567; }
+.atlas-node-card.block { width: 182px; min-height: 104px; background: linear-gradient(145deg, #f7fffb, #ddefea); }
+.atlas-node-card.block .node-kind-dot { background: #70a39a; }
+.react-flow__edge-path { filter: drop-shadow(0 2px 2px rgba(58,73,66,.08)); }
+.react-flow__edge.animated path { stroke-dasharray: 7 7; }
+.react-flow__controls { border: 1px solid #d7e2d9; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 28px rgba(35,55,48,.09); }
+.react-flow__controls-button { border-bottom-color: #dbe6de !important; background: rgba(255,254,250,.92) !important; color: #405852 !important; }
+.react-flow__minimap { border: 1px solid #d7e2d9; border-radius: 12px; background: rgba(255,254,250,.84) !important; box-shadow: 0 10px 28px rgba(35,55,48,.09); }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .45; }
