@@ -40,8 +40,10 @@ export function AppSidebar({ view, onNavigate, onCreateTopic, email, fullName, o
       <nav className="primary-nav" aria-label="Primary navigation">
         <button className={view === "home" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("home")} title="Home" aria-label="Home"><Icon>⌂</Icon><span className="sidebar-label">Home</span></button>
         <button className={view === "library" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("library")} title="Library" aria-label="Library"><Icon>▤</Icon><span className="sidebar-label">Library</span></button>
+        <button className={view === "chat" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("chat")} title="Chat" aria-label="Chat"><Icon>✦</Icon><span className="sidebar-label">Chat</span></button>
         <button className={view === "atlas" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("atlas")} title="Atlas" aria-label="Atlas"><Icon>✣</Icon><span className="sidebar-label">Atlas</span></button>
         <button className={view === "planner" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("planner")} title="Planner" aria-label="Planner"><Icon>◷</Icon><span className="sidebar-label">Planner</span></button>
+        <button className={view === "practice" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("practice")} title="Practice exams" aria-label="Practice exams"><Icon>□</Icon><span className="sidebar-label">Practice</span></button>
         <button className={view === "timer" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("timer")} title="Timer" aria-label="Timer"><Icon>◴</Icon><span className="sidebar-label">Timer</span></button>
         <button className={view === "notes" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("notes")} title="Notes" aria-label="Notes"><Icon>↗</Icon><span className="sidebar-label">Notes</span></button>
         <button className={view === "cards" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("cards")} title="Cards" aria-label="Cards"><Icon>◇</Icon><span className="sidebar-label">Cards</span></button>

@@ -5,7 +5,9 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AccountSettings } from "@/components/AccountSettings";
 import { DocumentLibrary } from "@/components/DocumentLibrary";
 import { DocumentReader } from "@/components/DocumentReader";
+import { AiChatPage } from "@/components/AiChatPage";
 import { TopicModal, UploadModal } from "@/components/modals";
+import { PracticeExams, type GeneratedPracticeExam } from "@/components/PracticeExams";
 import { TopicCards } from "@/components/TopicCards";
 import { TopicDashboard } from "@/components/TopicDashboard";
 import { TopicNotes } from "@/components/TopicNotes";
@@ -46,6 +48,7 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
   const [planBlocks, setPlanBlocks] = useState(initialPlanBlocks);
   const [courses, setCourses] = useState(initialCourses);
   const [activeTimer, setActiveTimer] = useState<ActiveStudyTimer | null>(null);
+  const [generatedPracticeExams, setGeneratedPracticeExams] = useState<GeneratedPracticeExam[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(initialCourses[0]?.id ?? null);
   const [selectedTopic, setSelectedTopic] = useState<StudyTopic | null>(initialCourses[0]?.modules.flatMap((module) => module.topics)[0] ?? null);
 
@@ -172,8 +175,10 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
       <section className="content-area">
         {view === "home" && <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} planBlocks={planBlocks} exams={exams} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenAtlas={() => setView("atlas")} onOpenPlanner={() => setView("planner")} />}
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
+        {view === "chat" && <AiChatPage courses={courses} documents={documents} onNoteCreated={handleNoteCreated} onCardCreated={handleCardCreated} onOpenNotesForTopic={openNotesForTopic} onOpenCardsForTopic={openCardsForTopic} />}
         {view === "atlas" && <StudyAtlas courses={courses} documents={documents} notes={notes} flashcards={flashcards} exams={exams} planBlocks={planBlocks} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenDocument={openDocument} onOpenNotesForTopic={openNotesForTopic} onOpenCardsForTopic={openCardsForTopic} onOpenPlanner={() => setView("planner")} />}
         {view === "planner" && <StudyPlanner courses={courses} exams={exams} availability={availability} planBlocks={planBlocks} onExamsChange={setExams} onAvailabilityChange={setAvailability} onPlanBlocksChange={setPlanBlocks} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} />}
+        {view === "practice" && <PracticeExams exams={exams} generatedExams={generatedPracticeExams} onGeneratedExamCreated={(exam) => setGeneratedPracticeExams((current) => [exam, ...current])} />}
         {view === "timer" && <StudyTimer timer={activeTimer} onStart={startTimer} onPauseResume={pauseResumeTimer} onClear={() => setActiveTimer(null)} />}
         {view === "dashboard" && (selectedTopic ? <TopicDashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} documents={documents} notes={notes} flashcards={flashcards} exams={exams} planBlocks={planBlocks} onOpenDocument={openDocument} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} onOpenPlanner={() => setView("planner")} /> : <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} planBlocks={planBlocks} exams={exams} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenAtlas={() => setView("atlas")} onOpenPlanner={() => setView("planner")} />)}
         {view === "reader" && (selectedDocument ? <DocumentReader key={selectedDocument.id} document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} onNoteCreated={handleNoteCreated} onOpenNotesForTopic={openNotesForTopic} onCardCreated={handleCardCreated} onOpenCardsForTopic={openCardsForTopic} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />)}
