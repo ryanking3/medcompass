@@ -11,8 +11,10 @@ The product is designed for medical study—not clinical decision-making. Do not
 - Private, row-level-secured workspaces with courses, modules, topics, and learning objectives.
 - Private PDF upload, topic linking, page-text extraction, retryable processing, and a signed in-browser reader.
 - Manual, source-aware topic notes with page citations.
+- Inline note images for pasted/uploaded diagrams and screenshots.
 - Manual basic and cloze flashcards, source-page links, and Anki-compatible CSV export.
 - Study planner with exams, weekly availability, generated topic-linked calendar blocks, and block status tracking.
+- Study Atlas: an interactive mind map derived from courses, modules, topics, sources, notes, citations, card queues, exams, and planner blocks.
 - Data-driven home, topic, library, notes, and cards views with clean empty states for new accounts.
 
 ## What is next
@@ -49,9 +51,12 @@ Open [http://localhost:3000](http://localhost:3000), request a magic link, and s
 | `npm run typecheck` | Check TypeScript without emitting files. |
 | `npm run build` | Create a production build. |
 
+The optional demo atlas seeding helper requires server-only Supabase credentials and an existing demo auth user. See [demo atlas seeding](docs/DEMO_ATLAS_SEEDING.md).
+
 ## Documentation
 
 - [Current implementation state](docs/CURRENT_STATE.md)
+- [Demo atlas seeding](docs/DEMO_ATLAS_SEEDING.md)
 - [Product specification](docs/PRODUCT_SPECIFICATION.md)
 - [v0.1 implementation plan](docs/V0_1_IMPLEMENTATION_PLAN.md)
 - [v0.1 UX blueprint](docs/V0_1_UX_BLUEPRINT.md)

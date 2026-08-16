@@ -1,4 +1,4 @@
-export type AppView = "home" | "library" | "planner" | "dashboard" | "reader" | "notes" | "cards" | "settings";
+export type AppView = "home" | "library" | "atlas" | "planner" | "dashboard" | "reader" | "notes" | "cards" | "settings";
 
 export type Notify = (message: string) => void;
 

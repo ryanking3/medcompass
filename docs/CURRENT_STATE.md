@@ -11,6 +11,7 @@ Sign in with a magic link
   → upload a permitted PDF and link it to a topic
   → extract its page text and read the private source
   → write a cited note or create/edit source-linked cards
+  → inspect the Study Atlas to see how those objects connect
   → export kept cards as Anki-compatible CSV
 ```
 
@@ -27,9 +28,10 @@ This is deliberately useful without AI. Manual study outputs must remain editabl
 | Sources | PDF upload is private, validates the file type/size, can be linked to a topic, and shows processing state. |
 | Extraction | Server-side PDF.js extracts text page by page into `document_pages`; failures have a retry path. |
 | Reader | A signed private URL renders the original PDF in the browser. |
-| Notes | Topic notes are created and edited manually, with optional document/page/excerpt citations. |
+| Notes | Topic notes are created and edited manually, with optional document/page/excerpt citations and inline pasted/uploaded images. |
 | Flashcards | Basic and cloze cards can be created, edited, deleted, marked as kept, linked to a source page, and exported to CSV for Anki. |
 | Study planner | Users can add exams, save weekly availability, generate topic-linked study blocks, and mark blocks planned/done/skipped. |
+| Study Atlas | A derived interactive mind map visualises courses, modules, topics, sources, notes, citations, card queues, exams, and upcoming planner blocks. |
 | Empty states | A new account starts with a real empty workspace rather than sample study data. |
 
 ## Important implementation details
@@ -44,9 +46,9 @@ This is deliberately useful without AI. Manual study outputs must remain editabl
 
 - AI chat, source retrieval, embeddings, vector search, and AI-generated notes/cards.
 - Reliable AI handling of source images, diagrams, or scanned-PDF OCR.
-- Reader thumbnails, zoom controls, in-app text selection, bookmarks, and passage handoff.
+- Advanced reader annotations, bookmarks, and passage handoff.
 - Rich-text notes, duplicate-card detection, review scheduling, `.apkg` export, or Anki synchronisation.
-- AI-assisted planner optimisation based on weak topics, source progress, notes, or flashcard history.
+- AI-assisted planner optimisation based on weak topics, source progress, notes, atlas gaps, or flashcard history.
 - Google/passkey sign-in, account deletion, document deletion, or advanced profile editing.
 - Background workers/queues, observability, automated test coverage, CI, and production deployment.
 
@@ -64,7 +66,7 @@ The app must distinguish answers supported by the student's source from general 
 
 ## Demo workspaces
 
-A private, owner-only workspace may be seeded directly in the database for product filming. Keep that data separate from migrations and application defaults: no personal identities, private source files, or user-specific seed content belong in the repository. A demo reader requires the owner to upload a permitted PDF to that account.
+A private, owner-only workspace may be seeded directly in the database for product filming. Keep that data separate from migrations and application defaults: no personal identities, private source files, or user-specific seed content belong in the repository. The local `scripts/seed-demo-atlas.mjs` helper seeds invented educational data for the Study Atlas when run with explicit runtime credentials and confirmation. A demo reader still requires the owner to upload a permitted PDF to that account.
 
 ## Verification
 
