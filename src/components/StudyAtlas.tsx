@@ -172,8 +172,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
 
     topics.forEach((topic, index) => {
       const angle = topicCount <= 1 ? -Math.PI / 2 : -Math.PI / 2 + (index / topicCount) * Math.PI * 2;
-      const ringX = topicCount <= 6 ? 560 : 690;
-      const ringY = topicCount <= 6 ? 360 : 455;
+      const ringX = topicCount <= 6 ? 980 : 1420;
+      const ringY = topicCount <= 6 ? 660 : 930;
       topicPositions.set(topic.id, { x: center.x + Math.cos(angle) * ringX, y: center.y + Math.sin(angle) * ringY, angle });
     });
 
@@ -196,8 +196,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         kind: "course",
         label: course.name,
         subtitle: [course.programme, course.academicYear].filter(Boolean).join(" · ") || "Course",
-        x: center.x + Math.cos(courseAngle) * 245 - 120,
-        y: center.y + Math.sin(courseAngle) * 160 - 70,
+        x: center.x + Math.cos(courseAngle) * 430 - 120,
+        y: center.y + Math.sin(courseAngle) * 290 - 70,
         courseId: course.id,
         meta: [plural(course.modules.length, "module"), plural(courseTopics.length, "topic")],
       });
@@ -205,16 +205,16 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
 
       course.modules.forEach((module) => {
         const moduleTopics = module.topics.map((topic) => topicPositions.get(topic.id)).filter(Boolean) as Array<{ x: number; y: number; angle: number }>;
-        const averageX = moduleTopics.length ? moduleTopics.reduce((sum, topic) => sum + topic.x, 0) / moduleTopics.length : center.x + Math.cos(courseAngle) * 420;
-        const averageY = moduleTopics.length ? moduleTopics.reduce((sum, topic) => sum + topic.y, 0) / moduleTopics.length : center.y + Math.sin(courseAngle) * 280;
+        const averageX = moduleTopics.length ? moduleTopics.reduce((sum, topic) => sum + topic.x, 0) / moduleTopics.length : center.x + Math.cos(courseAngle) * 780;
+        const averageY = moduleTopics.length ? moduleTopics.reduce((sum, topic) => sum + topic.y, 0) / moduleTopics.length : center.y + Math.sin(courseAngle) * 520;
         const moduleNodeId = `module:${module.id}`;
         nextNodes.push({
           id: moduleNodeId,
           kind: "module",
           label: module.name,
           subtitle: course.name,
-          x: center.x + (averageX - center.x) * 0.5 - 105,
-          y: center.y + (averageY - center.y) * 0.5 - 60,
+          x: center.x + (averageX - center.x) * 0.42 - 105,
+          y: center.y + (averageY - center.y) * 0.42 - 60,
           courseId: course.id,
           moduleId: module.id,
           meta: [plural(module.topics.length, "topic")],
@@ -258,8 +258,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
           kind: "cards",
           label: `${topicCards.filter((card) => card.isKept).length}/${topicCards.length} kept`,
           subtitle: `${topic.name} card queue`,
-          x: clamp(position.x + Math.cos(position.angle + 0.65) * 230, -900, 900) - 85,
-          y: clamp(position.y + Math.sin(position.angle + 0.65) * 230, -650, 650) - 55,
+          x: clamp(position.x + Math.cos(position.angle + 0.65) * 500, -2100, 2100) - 85,
+          y: clamp(position.y + Math.sin(position.angle + 0.65) * 500, -1500, 1500) - 55,
           topicId: topic.id,
           meta: [plural(topicCards.length, "card"), plural(topicCards.filter((card) => card.isKept).length, "kept card")],
         });
@@ -275,8 +275,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
           kind: "block",
           label: `${Math.round(minutes / 60)}h planned`,
           subtitle: `${upcomingBlocks.length} upcoming ${upcomingBlocks.length === 1 ? "block" : "blocks"}`,
-          x: clamp(position.x + Math.cos(position.angle - 0.75) * 230, -900, 900) - 85,
-          y: clamp(position.y + Math.sin(position.angle - 0.75) * 230, -650, 650) - 55,
+          x: clamp(position.x + Math.cos(position.angle - 0.75) * 500, -2100, 2100) - 85,
+          y: clamp(position.y + Math.sin(position.angle - 0.75) * 500, -1500, 1500) - 55,
           topicId: topic.id,
           meta: [`Next: ${formatDate(upcomingBlocks[0].startsOn)}`, upcomingBlocks[0].title],
         });
@@ -295,8 +295,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         kind: "source",
         label: document.title,
         subtitle: `${document.kind === "textbook" ? "Textbook" : document.kind === "lecture" ? "Lecture" : "PDF"} · ${document.status === "ready" ? `${document.pageCount ?? "?"} pages ready` : document.status}`,
-        x: clamp(averageX + Math.cos(awayAngle) * 310, -990, 990) - 95,
-        y: clamp(averageY + Math.sin(awayAngle) * 310, -720, 720) - 58,
+        x: clamp(averageX + Math.cos(awayAngle) * 680, -2250, 2250) - 95,
+        y: clamp(averageY + Math.sin(awayAngle) * 680, -1600, 1600) - 58,
         documentId: document.id,
         meta: document.linkedTopics.length ? document.linkedTopics.map((topic) => `Linked to ${topic.name}`) : ["Unlinked source"],
       });
@@ -313,8 +313,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         kind: "note",
         label: note.title,
         subtitle: note.citations.length ? `${plural(note.citations.length, "citation")} · ${note.images.length ? plural(note.images.length, "image") : "text note"}` : note.images.length ? plural(note.images.length, "image") : "Manual note",
-        x: clamp(position.x + Math.cos(position.angle + Math.PI + spread) * 255, -960, 960) - 90,
-        y: clamp(position.y + Math.sin(position.angle + Math.PI + spread) * 255, -700, 700) - 58,
+        x: clamp(position.x + Math.cos(position.angle + Math.PI + spread) * 560, -2200, 2200) - 90,
+        y: clamp(position.y + Math.sin(position.angle + Math.PI + spread) * 560, -1550, 1550) - 58,
         topicId: note.topicId,
         noteId: note.id,
         meta: [textSnippet(note.body || "Empty note"), ...note.citations.slice(0, 2).map((citation) => `Cites ${citation.documentTitle}${citation.pageStart ? ` p.${citation.pageStart}` : ""}`)],
@@ -337,8 +337,8 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         kind: "exam",
         label: exam.title,
         subtitle: `${formatDate(exam.examDate)} · ${Math.round(exam.targetMinutes / 60)}h target`,
-        x: clamp(averageX + 340, -930, 930) - 105,
-        y: clamp(averageY - 210, -720, 720) - 62,
+        x: clamp(averageX + 780, -2200, 2200) - 105,
+        y: clamp(averageY - 470, -1600, 1600) - 62,
         examId: exam.id,
         meta: exam.topics.map((topic) => `${topic.topicName}: weight ${topic.weight}/5 · confidence ${topic.confidence}/5`),
       });
@@ -483,7 +483,7 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
         <div className="atlas-canvas">
           <div className="canvas-card canvas-status">
             <span>{graphMode === "local" ? "Local focus" : `${graphMode} view`}</span>
-            <strong>{graphMode === "local" ? focusNode?.label ?? "Study Atlas" : "Drag cards · scroll to zoom"}</strong>
+            <strong>{graphMode === "local" ? focusNode?.label ?? "Study Atlas" : "Pan canvas · scroll to zoom"}</strong>
             <small>{graphMode === "local" ? `Depth ${localDepth} · ${visibleNodes.length} visible` : "Double click a card to open it."}</small>
           </div>
           <div className="canvas-card canvas-controls" aria-label="Graph display controls">
@@ -495,9 +495,13 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
             edges={flowEdges}
             nodeTypes={nodeTypes}
             fitView
-            fitViewOptions={{ padding: 0.22, maxZoom: 0.95 }}
-            minZoom={0.18}
+            fitViewOptions={{ padding: 0.42, maxZoom: 0.52 }}
+            minZoom={0.08}
             maxZoom={1.7}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            panOnDrag
+            zoomOnScroll
             defaultEdgeOptions={{ interactionWidth: 18 }}
             onNodeClick={(_event, node) => setSelectedNodeId(node.id)}
             onNodeDoubleClick={(_event, node) => openNode(node.id)}
