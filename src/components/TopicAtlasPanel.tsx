@@ -102,7 +102,7 @@ export function TopicAtlasPanel({ topic, documents, notes, flashcards, exams, pl
         .topic-planet strong { color: #263d37; font: 23px Georgia, serif; font-weight: 500; line-height: 1.05; }
         .topic-planet small, .satellite small { color: #64746e; font-size: 10px; line-height: 1.35; }
         .satellite { position: absolute; z-index: 3; display: grid; gap: 5px; width: 190px; min-height: 96px; padding: 13px; border: 1px solid #dce6de; border-radius: 18px; background: rgba(255,254,250,.92); box-shadow: 0 14px 28px rgba(39,60,52,.1), 0 1px 0 rgba(255,255,255,.86) inset; color: #263834; text-align: left; }
-        .satellite:hover:not(:disabled) { border-color: rgba(78,125,105,.52); box-shadow: 0 18px 34px rgba(38,75,62,.14), 0 0 0 4px rgba(112,158,133,.12); transform: translateY(-2px); }
+        .satellite:hover:not(:disabled) { border-color: rgba(78,125,105,.52); box-shadow: 0 18px 34px rgba(38,75,62,.14), 0 0 0 4px rgba(112,158,133,.12); }
         .satellite:disabled { cursor: default; opacity: .68; }
         .satellite strong { overflow: hidden; color: #263d37; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
         .satellite.source { left: 8%; top: 18%; background: linear-gradient(145deg, #fbfcf9, #e8eef2); }
@@ -110,10 +110,10 @@ export function TopicAtlasPanel({ topic, documents, notes, flashcards, exams, pl
         .satellite.cards { right: 11%; top: 17%; background: linear-gradient(145deg, #fff8ed, #f4dcc0); }
         .satellite.exam { right: 6%; bottom: 17%; background: linear-gradient(145deg, #fff9f7, #f2dcd6); }
         .satellite.plan { left: 50%; bottom: 7%; background: linear-gradient(145deg, #f7fffb, #ddefea); transform: translateX(-50%); }
-        .satellite.plan:hover:not(:disabled) { transform: translateX(-50%) translateY(-2px); }
+        .satellite.plan:hover:not(:disabled) { transform: translateX(-50%); }
         .topic-atlas-signals { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
         .topic-atlas-signals span { border-radius: 999px; padding: 7px 9px; color: #53675f; background: #fffefa; font-size: 10px; font-weight: 800; }
-        @media (max-width: 960px) { .topic-atlas-map { display: grid; gap: 9px; min-height: 0; padding: 14px; }.orbit { display: none; }.topic-planet, .satellite, .satellite.source, .satellite.notes, .satellite.cards, .satellite.exam, .satellite.plan { position: static; width: auto; transform: none; }.topic-planet { min-height: 0; }.satellite.plan:hover:not(:disabled) { transform: translateY(-2px); } }
+        @media (max-width: 960px) { .topic-atlas-map { display: grid; gap: 9px; min-height: 0; padding: 14px; }.orbit { display: none; }.topic-planet, .satellite, .satellite.source, .satellite.notes, .satellite.cards, .satellite.exam, .satellite.plan { position: static; width: auto; transform: none; }.topic-planet { min-height: 0; }.satellite.plan:hover:not(:disabled) { transform: none; } }
       `}</style>
     </article>
   );

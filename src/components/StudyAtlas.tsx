@@ -168,7 +168,6 @@ const nodeTypes = { atlasNode: AtlasStudyNode };
 
 export function StudyAtlas({ courses, documents, notes, flashcards, exams, planBlocks, onCreateTopic, onOpenTopic, onOpenDocument, onOpenNotesForTopic, onOpenCardsForTopic, onOpenPlanner }: StudyAtlasProps) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | AtlasKind>("all");
   const [query, setQuery] = useState("");
   const [graphMode, setGraphMode] = useState<"global" | "local" | "exam" | "evidence">("global");
@@ -399,7 +398,7 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
-  const activeNodeId = hoveredNodeId ?? selectedNodeId;
+  const activeNodeId = selectedNodeId;
   const localFocusId = selectedNodeId ?? "workspace";
   const localIds = useMemo(() => collectNeighborhoodIds(localFocusId, edges, localDepth), [edges, localDepth, localFocusId]);
   const connectedIds = useMemo(() => {
@@ -542,8 +541,6 @@ export function StudyAtlas({ courses, documents, notes, flashcards, exams, planB
             defaultEdgeOptions={{ interactionWidth: 18 }}
             onNodeClick={(_event, node) => setSelectedNodeId(node.id)}
             onNodeDoubleClick={(_event, node) => openNode(node.id)}
-            onNodeMouseEnter={(_event, node) => setHoveredNodeId(node.id)}
-            onNodeMouseLeave={() => setHoveredNodeId(null)}
           >
             <Background color="#c9d8d0" gap={42} size={1.1} />
             <Controls position="bottom-left" showInteractive={false} />
