@@ -44,6 +44,7 @@ body { margin: 0; background: var(--canvas); color: var(--ink); font-family: Ari
 .react-flow__controls { border: 1px solid #d7e2d9; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 28px rgba(35,55,48,.09); }
 .react-flow__controls-button { border-bottom-color: #dbe6de !important; background: rgba(255,254,250,.92) !important; color: #405852 !important; }
 .react-flow__minimap { border: 1px solid #d7e2d9; border-radius: 12px; background: rgba(255,254,250,.84) !important; box-shadow: 0 10px 28px rgba(35,55,48,.09); }
+.toast.toast-with-timer { bottom: 126px; }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .45; }

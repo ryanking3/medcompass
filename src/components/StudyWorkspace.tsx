@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AccountSettings } from "@/components/AccountSettings";
 import { DocumentLibrary } from "@/components/DocumentLibrary";
@@ -10,6 +10,7 @@ import { TopicCards } from "@/components/TopicCards";
 import { TopicDashboard } from "@/components/TopicDashboard";
 import { TopicNotes } from "@/components/TopicNotes";
 import { StudyPlanner } from "@/components/StudyPlanner";
+import { FloatingStudyTimer, StudyTimer, type ActiveStudyTimer } from "@/components/StudyTimer";
 import { StudyAtlas } from "@/components/StudyAtlas";
 import { WorkspaceHome } from "@/components/WorkspaceHome";
 import type { AppView, CreatedTopic, StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyTopic } from "@/components/types";
@@ -44,8 +45,23 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
   const [availability, setAvailability] = useState(initialAvailability);
   const [planBlocks, setPlanBlocks] = useState(initialPlanBlocks);
   const [courses, setCourses] = useState(initialCourses);
+  const [activeTimer, setActiveTimer] = useState<ActiveStudyTimer | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(initialCourses[0]?.id ?? null);
   const [selectedTopic, setSelectedTopic] = useState<StudyTopic | null>(initialCourses[0]?.modules.flatMap((module) => module.topics)[0] ?? null);
+
+  useEffect(() => {
+    if (!activeTimer?.running) return;
+    const interval = window.setInterval(() => {
+      setActiveTimer((currentTimer) => {
+        if (!currentTimer?.running) return currentTimer;
+        if (currentTimer.remainingSeconds <= 1) {
+          return { ...currentTimer, remainingSeconds: 0, running: false };
+        }
+        return { ...currentTimer, remainingSeconds: currentTimer.remainingSeconds - 1 };
+      });
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [activeTimer?.running]);
 
   const notify = (message: string) => {
     setToast(message);
@@ -84,6 +100,16 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
   const handleCardCreated = (card: StudyFlashcard) => setFlashcards((currentCards) => [card, ...currentCards]);
   const handleCardUpdated = (updatedCard: StudyFlashcard) => setFlashcards((currentCards) => currentCards.map((card) => card.id === updatedCard.id ? updatedCard : card));
   const handleCardDeleted = (cardId: string) => setFlashcards((currentCards) => currentCards.filter((card) => card.id !== cardId));
+
+  const startTimer = (title: string, minutes: number) => {
+    const totalSeconds = Math.max(1, minutes) * 60;
+    setActiveTimer({ title, totalSeconds, remainingSeconds: totalSeconds, running: true });
+    notify("Timer started. It will stay visible across MedCompass.");
+  };
+
+  const pauseResumeTimer = () => {
+    setActiveTimer((currentTimer) => currentTimer ? { ...currentTimer, running: currentTimer.remainingSeconds > 0 ? !currentTimer.running : false } : currentTimer);
+  };
 
   const selectCourse = (courseId: string) => {
     const course = courses.find((entry) => entry.id === courseId);
@@ -148,7 +174,8 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
         {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />}
         {view === "atlas" && <StudyAtlas courses={courses} documents={documents} notes={notes} flashcards={flashcards} exams={exams} planBlocks={planBlocks} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenDocument={openDocument} onOpenNotesForTopic={openNotesForTopic} onOpenCardsForTopic={openCardsForTopic} onOpenPlanner={() => setView("planner")} />}
         {view === "planner" && <StudyPlanner courses={courses} exams={exams} availability={availability} planBlocks={planBlocks} onExamsChange={setExams} onAvailabilityChange={setAvailability} onPlanBlocksChange={setPlanBlocks} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} />}
-        {view === "dashboard" && (selectedTopic ? <TopicDashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} documents={documents} notes={notes} flashcards={flashcards} onOpenDocument={openDocument} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} /> : <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} planBlocks={planBlocks} exams={exams} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenAtlas={() => setView("atlas")} onOpenPlanner={() => setView("planner")} />)}
+        {view === "timer" && <StudyTimer timer={activeTimer} onStart={startTimer} onPauseResume={pauseResumeTimer} onClear={() => setActiveTimer(null)} />}
+        {view === "dashboard" && (selectedTopic ? <TopicDashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} documents={documents} notes={notes} flashcards={flashcards} exams={exams} planBlocks={planBlocks} onOpenDocument={openDocument} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} onOpenPlanner={() => setView("planner")} /> : <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} planBlocks={planBlocks} exams={exams} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenAtlas={() => setView("atlas")} onOpenPlanner={() => setView("planner")} />)}
         {view === "reader" && (selectedDocument ? <DocumentReader key={selectedDocument.id} document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} onNoteCreated={handleNoteCreated} onOpenNotesForTopic={openNotesForTopic} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} />)}
         {view === "notes" && <TopicNotes topic={selectedTopic} notes={notes} documents={documents} onBack={() => setView("dashboard")} onNoteCreated={handleNoteCreated} onNoteUpdated={handleNoteUpdated} />}
         {view === "cards" && <TopicCards topic={selectedTopic} cards={flashcards} documents={documents} onBack={() => setView("dashboard")} onCardCreated={handleCardCreated} onCardUpdated={handleCardUpdated} onCardDeleted={handleCardDeleted} />}
@@ -159,7 +186,8 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
       </section>
       {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} notify={notify} onUploadComplete={handleDocumentUploaded} topics={courses.flatMap((course) => course.modules.flatMap((module) => module.topics))} selectedTopicId={selectedTopic?.id ?? null} />}
       {topicOpen && <TopicModal onClose={() => setTopicOpen(false)} courses={courses} selectedCourseId={selectedCourseId} onTopicCreated={handleTopicCreated} />}
-      {toast && <div className="toast" role="status">{toast}</div>}
+      {activeTimer && view !== "timer" && <FloatingStudyTimer timer={activeTimer} onOpenTimer={() => setView("timer")} onPauseResume={pauseResumeTimer} onClear={() => setActiveTimer(null)} />}
+      {toast && <div className={activeTimer && view !== "timer" ? "toast toast-with-timer" : "toast"} role="status">{toast}</div>}
     </main>
   );
 }

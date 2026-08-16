@@ -42,6 +42,7 @@ export function AppSidebar({ view, onNavigate, onCreateTopic, email, fullName, o
         <button className={view === "library" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("library")} title="Library" aria-label="Library"><Icon>▤</Icon><span className="sidebar-label">Library</span></button>
         <button className={view === "atlas" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("atlas")} title="Atlas" aria-label="Atlas"><Icon>✣</Icon><span className="sidebar-label">Atlas</span></button>
         <button className={view === "planner" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("planner")} title="Planner" aria-label="Planner"><Icon>◷</Icon><span className="sidebar-label">Planner</span></button>
+        <button className={view === "timer" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("timer")} title="Timer" aria-label="Timer"><Icon>◴</Icon><span className="sidebar-label">Timer</span></button>
         <button className={view === "notes" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("notes")} title="Notes" aria-label="Notes"><Icon>↗</Icon><span className="sidebar-label">Notes</span></button>
         <button className={view === "cards" ? "nav-item active" : "nav-item"} onClick={() => onNavigate("cards")} title="Cards" aria-label="Cards"><Icon>◇</Icon><span className="sidebar-label">Cards</span></button>
       </nav>

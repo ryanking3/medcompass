@@ -1,6 +1,7 @@
 "use client";
 
-import type { StudyCourse, StudyDocument, StudyFlashcard, StudyNote, StudyTopic } from "./types";
+import { TopicAtlasPanel } from "./TopicAtlasPanel";
+import type { StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyTopic } from "./types";
 
 type TopicDashboardProps = {
   topic: StudyTopic;
@@ -8,13 +9,16 @@ type TopicDashboardProps = {
   documents: StudyDocument[];
   notes: StudyNote[];
   flashcards: StudyFlashcard[];
+  exams: StudyExam[];
+  planBlocks: StudyPlanBlock[];
   onOpenDocument: (document: StudyDocument) => void;
   onOpenNotes: () => void;
   onOpenCards: () => void;
   onOpenUpload: () => void;
+  onOpenPlanner: () => void;
 };
 
-export function TopicDashboard({ topic, course, documents, notes, flashcards, onOpenDocument, onOpenNotes, onOpenCards, onOpenUpload }: TopicDashboardProps) {
+export function TopicDashboard({ topic, course, documents, notes, flashcards, exams, planBlocks, onOpenDocument, onOpenNotes, onOpenCards, onOpenUpload, onOpenPlanner }: TopicDashboardProps) {
   const topicDocuments = documents.filter((document) => document.linkedTopics.some((linkedTopic) => linkedTopic.id === topic.id));
   const topicNotes = notes.filter((note) => note.topicId === topic.id);
   const topicCards = flashcards.filter((card) => card.topicId === topic.id);
@@ -22,7 +26,7 @@ export function TopicDashboard({ topic, course, documents, notes, flashcards, on
 
   return <div className="topic-dashboard">
     <header className="topic-header"><div><p className="breadcrumb">{course?.name ?? "Study workspace"} <span>/</span> Topic</p><h1>{topic.name}</h1><p className="objective"><span>Learning objective</span> {topic.learningObjectives[0]?.body ?? "Add a learning objective when you are ready to focus this topic."}</p></div><button className="button primary" onClick={onOpenUpload}>+ Add source</button></header>
-    <section className="topic-grid"><article className="topic-panel sources"><div className="panel-heading"><div><p className="eyebrow">Sources</p><h2>Your study material</h2></div><button className="text-button" onClick={onOpenUpload}>+ Add source</button></div>{topicDocuments.length ? <div className="source-list">{topicDocuments.map((document) => <button key={document.id} onClick={() => onOpenDocument(document)}><span className={`source-icon ${document.kind}`}>{document.kind === "textbook" ? "BK" : "PDF"}</span><span><strong>{document.title}</strong><small>{document.status === "ready" ? `${document.pageCount} pages ready` : document.status === "failed" ? "Needs attention" : "Preparing source"}</small></span><b>Open →</b></button>)}</div> : <div className="panel-empty"><p>No sources linked yet.</p><button className="button ghost" onClick={onOpenUpload}>Add a PDF</button></div>}</article>
+    <section className="topic-grid"><TopicAtlasPanel topic={topic} documents={documents} notes={notes} flashcards={flashcards} exams={exams} planBlocks={planBlocks} onOpenDocument={onOpenDocument} onOpenNotes={onOpenNotes} onOpenCards={onOpenCards} onOpenPlanner={onOpenPlanner} /><article className="topic-panel sources"><div className="panel-heading"><div><p className="eyebrow">Sources</p><h2>Your study material</h2></div><button className="text-button" onClick={onOpenUpload}>+ Add source</button></div>{topicDocuments.length ? <div className="source-list">{topicDocuments.map((document) => <button key={document.id} onClick={() => onOpenDocument(document)}><span className={`source-icon ${document.kind}`}>{document.kind === "textbook" ? "BK" : "PDF"}</span><span><strong>{document.title}</strong><small>{document.status === "ready" ? `${document.pageCount} pages ready` : document.status === "failed" ? "Needs attention" : "Preparing source"}</small></span><b>Open →</b></button>)}</div> : <div className="panel-empty"><p>No sources linked yet.</p><button className="button ghost" onClick={onOpenUpload}>Add a PDF</button></div>}</article>
       <article className="topic-panel next-step"><p className="eyebrow">Next step</p><h2>{topicDocuments.length ? "Turn what you read into durable study material." : "Add a source to start studying this topic."}</h2><p>{topicDocuments.length ? "Save notes in your own words and create a small set of cards worth revising." : "Upload a permitted PDF and keep it connected to this topic from the beginning."}</p><div>{topicDocuments.length ? <><button className="button dark" onClick={onOpenNotes}>Open notes →</button><button className="text-button" onClick={onOpenCards}>Review cards →</button></> : <button className="button dark" onClick={onOpenUpload}>Add source →</button>}</div></article>
       <article className="topic-panel notes"><div className="panel-heading"><div><p className="eyebrow">Notes</p><h2>{topicNotes.length ? `${topicNotes.length} saved ${topicNotes.length === 1 ? "note" : "notes"}` : "No notes yet"}</h2></div><button className="text-button" onClick={onOpenNotes}>{topicNotes.length ? "Open notes" : "Create note"}</button></div>{topicNotes.length ? <div className="note-list">{topicNotes.slice(0, 3).map((note) => <button key={note.id} onClick={onOpenNotes}><span>↗</span><div><strong>{note.title}</strong><small>{note.citations.length ? `${note.citations.length} source link${note.citations.length === 1 ? "" : "s"}` : "No source links yet"}</small></div></button>)}</div> : <div className="panel-empty small"><p>Capture the useful bits in your own words.</p></div>}</article>
       <article className="topic-panel cards"><div className="cards-count">{keptCards}</div><div><p className="eyebrow">Kept cards</p><h2>{keptCards ? "Ready for Anki" : "No cards kept yet"}</h2><p>{topicCards.length ? `${topicCards.length} card ${topicCards.length === 1 ? "draft" : "drafts"} in this topic.` : "Create small, source-linked cards when you are ready."}</p><button className="text-button" onClick={onOpenCards}>{topicCards.length ? "Review cards →" : "Create cards →"}</button></div></article></section>
