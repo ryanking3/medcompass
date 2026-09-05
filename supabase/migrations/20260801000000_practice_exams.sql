@@ -2,7 +2,7 @@
 -- JSON so fake AI papers and future real AI papers share the same persistence
 -- surface while the product shape is still moving quickly.
 
-create table public.practice_exams (
+create table if not exists public.practice_exams (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   source_exam_id uuid references public.study_exams(id) on delete set null,
@@ -16,16 +16,20 @@ create table public.practice_exams (
   updated_at timestamptz not null default now()
 );
 
-create index practice_exams_workspace_id_idx on public.practice_exams(workspace_id);
-create index practice_exams_source_exam_id_idx on public.practice_exams(source_exam_id);
-create index practice_exams_created_at_idx on public.practice_exams(created_at desc);
+create index if not exists practice_exams_workspace_id_idx on public.practice_exams(workspace_id);
+create index if not exists practice_exams_source_exam_id_idx on public.practice_exams(source_exam_id);
+create index if not exists practice_exams_created_at_idx on public.practice_exams(created_at desc);
 
 alter table public.practice_exams enable row level security;
+
+drop policy if exists "workspace members manage practice_exams" on public.practice_exams;
 
 create policy "workspace members manage practice_exams" on public.practice_exams
   for all to authenticated
   using (public.can_access_workspace(workspace_id))
   with check (public.can_access_workspace(workspace_id));
+
+drop trigger if exists practice_exams_set_updated_at on public.practice_exams;
 
 create trigger practice_exams_set_updated_at
   before update on public.practice_exams
