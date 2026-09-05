@@ -168,3 +168,14 @@ export type StudyPracticeExamAttempt = {
   durationSeconds: number;
   completedAt: string;
 };
+
+export type ChatLaunchContext = {
+  id: string;
+  documentId?: string;
+  documentTitle?: string;
+  topicId?: string;
+  page?: number;
+  selectedText?: string;
+  prompt?: string;
+  source: "reader" | "home" | "topic" | "practice";
+};

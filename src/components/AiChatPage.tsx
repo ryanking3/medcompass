@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AiSourceAction, AiSourceStudyResponse } from "@/lib/ai/types";
-import type { StudyCourse, StudyDocument, StudyFlashcard, StudyNote } from "./types";
+import type { ChatLaunchContext, StudyCourse, StudyDocument, StudyFlashcard, StudyNote } from "./types";
 
 type ChatMessage = {
   id: string;
@@ -18,17 +18,20 @@ type AiChatPageProps = {
   onCardCreated: (card: StudyFlashcard) => void;
   onOpenNotesForTopic: (topicId: string) => void;
   onOpenCardsForTopic: (topicId: string) => void;
+  launchContext: ChatLaunchContext | null;
+  onLaunchContextConsumed: () => void;
 };
 
 function flattenTopics(courses: StudyCourse[]) {
   return courses.flatMap((course) => course.modules.flatMap((module) => module.topics.map((topic) => ({ ...topic, courseName: course.name, moduleName: module.name }))));
 }
 
-export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, onOpenNotesForTopic, onOpenCardsForTopic }: AiChatPageProps) {
+export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, onOpenNotesForTopic, onOpenCardsForTopic, launchContext, onLaunchContextConsumed }: AiChatPageProps) {
   const topics = useMemo(() => flattenTopics(courses), [courses]);
   const [selectedDocumentId, setSelectedDocumentId] = useState(documents[0]?.id ?? "");
   const [selectedTopicId, setSelectedTopicId] = useState(topics[0]?.id ?? "");
   const [contextOpen, setContextOpen] = useState(false);
+  const [activeLaunchContext, setActiveLaunchContext] = useState<ChatLaunchContext | null>(null);
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState<AiSourceAction | null>(null);
@@ -41,6 +44,23 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
     "What are the likely MCQ traps in this topic?",
     "Turn the key mechanism into an active recall checklist.",
   ];
+
+  useEffect(() => {
+    if (!launchContext) return;
+    let cancelled = false;
+    window.queueMicrotask(() => {
+      if (cancelled) return;
+      if (launchContext.documentId) setSelectedDocumentId(launchContext.documentId);
+      if (launchContext.topicId) setSelectedTopicId(launchContext.topicId);
+      const sourceLine = launchContext.documentTitle ? `${launchContext.documentTitle}${launchContext.page ? `, p. ${launchContext.page}` : ""}` : "the selected source";
+      const selectedText = launchContext.selectedText?.trim();
+      setPrompt(launchContext.prompt ?? (selectedText ? `Explain this section from ${sourceLine}:\n\n${selectedText}` : `What should I understand from ${sourceLine}?`));
+      setActiveLaunchContext(launchContext);
+      setContextOpen(false);
+      onLaunchContextConsumed();
+    });
+    return () => { cancelled = true; };
+  }, [launchContext, onLaunchContextConsumed]);
 
   const runAction = async (action: AiSourceAction) => {
     if (!selectedDocument || busy) return;
@@ -128,6 +148,10 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
           </div>
           <button className="text-button" onClick={() => setContextOpen(true)}>Change context →</button>
         </div>
+        {activeLaunchContext?.selectedText && <div className="launched-context">
+          <span>Sent from {activeLaunchContext.source}{activeLaunchContext.page ? ` · page ${activeLaunchContext.page}` : ""}</span>
+          <p>{activeLaunchContext.selectedText}</p>
+        </div>}
 
         <main className="chat-main">
           <div className="chat-thread">
@@ -211,6 +235,9 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
         .context-strip div { min-width: 0; display: grid; gap: 3px; }
         .context-strip span { color: #718078; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
         .context-strip strong { color: #223a35; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .launched-context { display: grid; gap: 6px; padding: 12px 18px; border-bottom: 1px solid #e3e8e2; background: #f8faf6; }
+        .launched-context span { color: #4d806d; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+        .launched-context p { max-height: 72px; overflow: auto; margin: 0; color: #52625d; font: 12px/1.5 Georgia, serif; }
         .chat-unlocks { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 12px; border-top: 1px solid #e8eee8; }
         .chat-unlocks span { border-radius: 999px; padding: 7px 9px; color: #53675f; background: #edf4ee; font-size: 10px; font-weight: 800; }
         .chat-main { min-height: 650px; display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
 import { NoteInlineContent, localNoteImageToken, noteImageToken, type InlineNoteImage } from "@/components/NoteInlineContent";
 import type { AiSourceAction, AiSourceStudyResponse } from "@/lib/ai/types";
-import type { StudyDocument, StudyFlashcard, StudyNote } from "@/components/types";
+import type { ChatLaunchContext, StudyDocument, StudyFlashcard, StudyNote } from "@/components/types";
 
 const PdfContinuousViewer = dynamic(() => import("@/components/PdfContinuousViewer"), {
   ssr: false,
@@ -22,6 +22,7 @@ type DocumentReaderProps = {
   onOpenNotesForTopic: (topicId: string) => void;
   onCardCreated: (card: StudyFlashcard) => void;
   onOpenCardsForTopic: (topicId: string) => void;
+  onOpenChatWithContext: (context: ChatLaunchContext) => void;
 };
 
 const statusCopy = {
@@ -50,7 +51,7 @@ function titleFromSelection(selection: string, fallback: string) {
   return compactSelection.length > 72 ? `${compactSelection.slice(0, 69)}…` : compactSelection;
 }
 
-export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCreated, onOpenNotesForTopic, onCardCreated, onOpenCardsForTopic }: DocumentReaderProps) {
+export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCreated, onOpenNotesForTopic, onCardCreated, onOpenCardsForTopic, onOpenChatWithContext }: DocumentReaderProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isPreparing, setIsPreparing] = useState(false);
@@ -179,6 +180,22 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
 
   function selectedPdfText() {
     return globalThis.getSelection?.()?.toString().replace(/\s+/g, " ").trim() ?? "";
+  }
+
+  function openChatFromReader() {
+    const selection = selectedPdfText();
+    onOpenChatWithContext({
+      id: crypto.randomUUID(),
+      source: "reader",
+      documentId: document.id,
+      documentTitle: document.title,
+      topicId: selectedNoteTopicId || undefined,
+      page: visiblePage,
+      selectedText: selection,
+      prompt: selection
+        ? `Explain this highlighted section and turn it into exam-friendly points:\n\n${selection}`
+        : `Help me study ${document.title}, page ${visiblePage}. What is high-yield here?`,
+    });
   }
 
   function openAiAssistant(action: AiSourceAction) {
@@ -488,13 +505,14 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
           {extractionReady && <div className="reader-ready-card"><strong>Citation layer ready</strong><p>Questions, notes, and flashcards can now point back to page numbers from this source.</p></div>}
           <div className="reader-tool-list">
             <button onClick={copyPageCitation}><span>⌘</span><div><strong>{copiedCitation ? "Citation copied" : "Copy current citation"}</strong><small>{document.title}, p. {visiblePage}</small></div></button>
+            <button onClick={openChatFromReader}><span>↪</span><div><strong>Open in Chat</strong><small>Send highlight, page, source, and topic context</small></div></button>
             <div className="reader-note-tool">
               <div className="reader-note-tool-heading"><span>↗</span><div><strong>Create source note</strong><small>{document.linkedTopics.length ? "Highlight text first, or cite the current page." : "Link this source to a topic first."}</small></div></div>
               {document.linkedTopics.length > 1 && <label>Topic<select value={selectedNoteTopicId} onChange={(event) => setNoteTopicId(event.target.value)}>{document.linkedTopics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>}
               <button className="reader-note-action" onClick={openNoteComposer} disabled={!selectedNoteTopicId || isCreatingNote}>{isCreatingNote ? "Saving…" : "Write note"}</button>
               {noteFeedback && <div className={createdNoteTopicId ? "reader-note-success" : "reader-note-message"} role="status"><p>{noteFeedback}</p>{createdNoteTopicId && <button onClick={() => onOpenNotesForTopic(createdNoteTopicId)}>Open note →</button>}</div>}
             </div>
-            <button onClick={() => openAiAssistant("ask")}><span>✦</span><div><strong>Ask AI about selection</strong><small>{extractionReady ? "Fake AI now · real provider later" : "Works best after extraction"}</small></div></button>
+            <button onClick={() => openAiAssistant("ask")}><span>✦</span><div><strong>Quick ask here</strong><small>{extractionReady ? "Fake AI now · real provider later" : "Works best after extraction"}</small></div></button>
             <button onClick={() => openAiAssistant("note")} disabled={!selectedNoteTopicId}><span>✎</span><div><strong>AI note draft</strong><small>Uses the note template and source citation</small></div></button>
             <button onClick={() => openAiAssistant("flashcard")} disabled={!selectedNoteTopicId}><span>◇</span><div><strong>AI flashcard draft</strong><small>One idea, one card, source-linked</small></div></button>
           </div>
