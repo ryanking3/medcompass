@@ -8,24 +8,35 @@ type PracticeExamsProps = {
   exams: StudyExam[];
   generatedExams: StudyPracticeExam[];
   onGeneratedExamCreated: (exam: StudyPracticeExam) => void;
+  onStartTimer: (title: string, minutes: number) => void;
 };
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
-export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }: PracticeExamsProps) {
+function estimateAttemptMinutes(exam: StudyPracticeExam) {
+  const minutes = exam.questions.reduce((total, question) => total + (question.type === "written" ? 7 : 2), 0);
+  return Math.max(15, Math.min(180, minutes));
+}
+
+export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, onStartTimer }: PracticeExamsProps) {
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState(exams[0]?.id ?? "");
   const [format, setFormat] = useState<MockExamFormat>("mixed");
   const [questionCount, setQuestionCount] = useState(6);
   const [selectedGeneratedId, setSelectedGeneratedId] = useState<string | null>(generatedExams[0]?.id ?? null);
+  const [attemptMode, setAttemptMode] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const selectedGenerated = generatedExams.find((exam) => exam.id === selectedGeneratedId) ?? generatedExams[0] ?? null;
   const sourceExam = useMemo(() => exams.find((exam) => exam.id === selectedExamId) ?? exams[0] ?? null, [exams, selectedExamId]);
   const upcomingExams = useMemo(() => [...exams].sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime()).slice(0, 3), [exams]);
   const selectedSourceDate = sourceExam ? new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" }).format(new Date(sourceExam.examDate)) : "";
+  const answeredCount = selectedGenerated ? selectedGenerated.questions.filter((question) => answers[question.id]?.trim()).length : 0;
+  const attemptMinutes = selectedGenerated ? estimateAttemptMinutes(selectedGenerated) : 0;
 
   const openGenerator = () => {
     setSelectedExamId(exams[0]?.id ?? "");
@@ -58,6 +69,25 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }:
     onGeneratedExamCreated(generatedExam);
     setSelectedGeneratedId(generatedExam.id);
     setGeneratorOpen(false);
+  };
+
+  const selectGeneratedExam = (examId: string) => {
+    setSelectedGeneratedId(examId);
+    setAttemptMode(false);
+    setAnswers({});
+    setRevealedAnswers({});
+  };
+
+  const startAttempt = () => {
+    if (!selectedGenerated) return;
+    setAttemptMode(true);
+    setRevealedAnswers({});
+    onStartTimer(`Practice exam: ${selectedGenerated.title}`, estimateAttemptMinutes(selectedGenerated));
+  };
+
+  const finishAttempt = () => {
+    setAttemptMode(false);
+    setRevealedAnswers(Object.fromEntries((selectedGenerated?.questions ?? []).map((question) => [question.id, true])));
   };
 
   return (
@@ -98,7 +128,7 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }:
             </div>
             <button className="mini-generate" onClick={openGenerator} aria-label="Generate mock exam">+</button>
           </div>
-          {generatedExams.length ? generatedExams.map((exam) => <button key={exam.id} className={selectedGenerated?.id === exam.id ? "practice-row active" : "practice-row"} onClick={() => setSelectedGeneratedId(exam.id)}>
+          {generatedExams.length ? generatedExams.map((exam) => <button key={exam.id} className={selectedGenerated?.id === exam.id ? "practice-row active" : "practice-row"} onClick={() => selectGeneratedExam(exam.id)}>
             <span>{exam.format.toUpperCase()} · {exam.questions.length} Qs</span>
             <strong>{exam.title}</strong>
             <small>{formatDateTime(exam.createdAt)}</small>
@@ -118,10 +148,17 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }:
                 <p>{selectedGenerated.format} · {selectedGenerated.questions.length} questions · fake AI mode</p>
               </div>
               <div className="paper-actions">
-                <button className="button ghost" disabled>Timed attempt soon</button>
+                {attemptMode ? <button className="button dark" onClick={finishAttempt}>Finish attempt</button> : <button className="button ghost" onClick={startAttempt}>Start timed attempt · {attemptMinutes}m</button>}
                 <button className="button ghost" onClick={openGenerator}>Generate another</button>
               </div>
             </div>
+            {attemptMode && <div className="attempt-banner">
+              <div>
+                <span>Attempt mode</span>
+                <strong>{answeredCount}/{selectedGenerated.questions.length} answered</strong>
+              </div>
+              <p>Answers stay private in this browser for now. Use the floating timer while you work, then finish to reveal all marking guides.</p>
+            </div>}
             <div className="standards-row">{selectedGenerated.standards.map((standard) => <span key={standard}>{standard}</span>)}</div>
             <div className="question-stack">{selectedGenerated.questions.map((question, index) => <article key={question.id}>
               <div className="question-meta">
@@ -130,11 +167,19 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }:
               </div>
               <h3>{index + 1}. {question.prompt}</h3>
               {question.options && <ol>{question.options.map((option) => <li key={option}>{option}</li>)}</ol>}
-              <details>
-                <summary>Show answer</summary>
+              {attemptMode && <label className="answer-box">
+                Your answer
+                <textarea value={answers[question.id] ?? ""} onChange={(event) => setAnswers((current) => ({ ...current, [question.id]: event.target.value }))} placeholder={question.type === "mcq" ? "Choose an option and explain why…" : "Write your answer before revealing the guide…"} />
+              </label>}
+              {revealedAnswers[question.id] ? <div className="answer-guide">
+                <span>Marking guide</span>
                 <p><strong>Answer:</strong> {question.answer}</p>
                 <p><strong>Rationale:</strong> {question.rationale}</p>
-              </details>
+              </div> : <details>
+                <summary>{attemptMode ? "Reveal marking guide" : "Show answer"}</summary>
+                <p><strong>Answer:</strong> {question.answer}</p>
+                <p><strong>Rationale:</strong> {question.rationale}</p>
+              </details>}
             </article>)}</div>
           </> : <div className="practice-empty">
             <span>□</span>
@@ -207,6 +252,11 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }:
         .paper-heading { align-items: center; margin-bottom: 14px; padding-bottom: 20px; border-bottom: 1px solid #edf0ec; }
         .paper-heading p:not(.eyebrow) { margin: 6px 0 0; color: #6b7974; font-size: 12px; }
         .paper-actions { display: flex; gap: 8px; }
+        .attempt-banner { display: flex; justify-content: space-between; gap: 18px; margin: 0 0 18px; padding: 14px 16px; border: 1px solid #cfe2d4; border-radius: 13px; background: linear-gradient(135deg, #e9f4ec, #fffefa); }
+        .attempt-banner div { display: grid; gap: 3px; }
+        .attempt-banner span { color: #4d806d; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+        .attempt-banner strong { color: #263d37; font: 21px Georgia, serif; font-weight: 500; }
+        .attempt-banner p { max-width: 520px; margin: 0; color: #61716b; font-size: 12px; line-height: 1.5; }
         .standards-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
         .standards-row span { border-radius: 999px; padding: 6px 8px; color: #53675f; background: #edf4ee; font-size: 10px; font-weight: 800; }
         .question-stack { display: grid; gap: 13px; }
@@ -217,6 +267,11 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }:
         .question-stack h3 { margin: 11px 0 12px; color: #263d37; font: 20px Georgia, serif; font-weight: 500; line-height: 1.35; }
         .question-stack li, .question-stack p { color: #53635e; font-size: 12px; line-height: 1.55; }
         .question-stack summary { cursor: pointer; color: #3d796d; font-size: 12px; font-weight: 800; }
+        .answer-box { display: grid; gap: 8px; margin: 14px 0 10px; color: #3f504d; font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+        .answer-box textarea { min-height: 96px; resize: vertical; border: 1px solid #d5ddd6; border-radius: 10px; padding: 12px; color: #20343a; background: #fffefa; outline-color: #497970; font-size: 13px; line-height: 1.55; text-transform: none; letter-spacing: 0; font-weight: 500; }
+        .answer-guide { margin-top: 13px; padding: 13px; border: 1px solid #dce8df; border-radius: 11px; background: #eef6f0; }
+        .answer-guide span { color: #397468; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+        .answer-guide p { margin: 8px 0 0; }
         .practice-empty { min-height: 560px; display: grid; place-items: center; align-content: center; gap: 12px; text-align: center; color: #718078; }
         .practice-empty span { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px; color: #3f7764; background: #e3efe6; font: 25px Georgia, serif; }
         .practice-empty h2 { margin: 0; color: #263d37; font: 28px Georgia, serif; font-weight: 500; }
@@ -239,7 +294,7 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }:
         .count-shortcuts { min-width: 150px; }
         .generator-error { margin: 0; color: #9a4a4a; font-size: 12px; }
         .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
-        @media (max-width: 980px) { .practice-page { padding: 40px 34px 90px; }.practice-overview, .practice-shell { grid-template-columns: 1fr; }.practice-list { position: static; }.practice-header, .paper-heading { display: grid; }.paper-actions { flex-wrap: wrap; } }
+        @media (max-width: 980px) { .practice-page { padding: 40px 34px 90px; }.practice-overview, .practice-shell { grid-template-columns: 1fr; }.practice-list { position: static; }.practice-header, .paper-heading, .attempt-banner { display: grid; }.paper-actions { flex-wrap: wrap; } }
         @media (max-width: 620px) { .practice-page { padding: 30px 18px 80px; }.practice-header h1 { font-size: 38px; }.modal-actions, .count-field { display: grid; }.count-shortcuts { min-width: 0; } }
       `}</style>
     </div>
