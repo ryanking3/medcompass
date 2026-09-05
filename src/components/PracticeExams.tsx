@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import type { MockExamFormat } from "@/lib/ai/types";
-import type { StudyExam, StudyPracticeExam } from "./types";
+import type { StudyExam, StudyPracticeExam, StudyPracticeExamAttempt } from "./types";
 
 type PracticeExamsProps = {
   exams: StudyExam[];
   generatedExams: StudyPracticeExam[];
   onGeneratedExamCreated: (exam: StudyPracticeExam) => void;
+  onAttemptSaved: (practiceExamId: string, attempt: StudyPracticeExamAttempt) => void;
   onStartTimer: (title: string, minutes: number) => void;
 };
 
@@ -20,23 +21,35 @@ function estimateAttemptMinutes(exam: StudyPracticeExam) {
   return Math.max(15, Math.min(180, minutes));
 }
 
-export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, onStartTimer }: PracticeExamsProps) {
+function formatDuration(seconds: number) {
+  const minutes = Math.max(0, Math.round(seconds / 60));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
+
+export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, onAttemptSaved, onStartTimer }: PracticeExamsProps) {
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState(exams[0]?.id ?? "");
   const [format, setFormat] = useState<MockExamFormat>("mixed");
   const [questionCount, setQuestionCount] = useState(6);
   const [selectedGeneratedId, setSelectedGeneratedId] = useState<string | null>(generatedExams[0]?.id ?? null);
   const [attemptMode, setAttemptMode] = useState(false);
+  const [attemptStartedAt, setAttemptStartedAt] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
+  const [savingAttempt, setSavingAttempt] = useState(false);
   const selectedGenerated = generatedExams.find((exam) => exam.id === selectedGeneratedId) ?? generatedExams[0] ?? null;
   const sourceExam = useMemo(() => exams.find((exam) => exam.id === selectedExamId) ?? exams[0] ?? null, [exams, selectedExamId]);
   const upcomingExams = useMemo(() => [...exams].sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime()).slice(0, 3), [exams]);
   const selectedSourceDate = sourceExam ? new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" }).format(new Date(sourceExam.examDate)) : "";
   const answeredCount = selectedGenerated ? selectedGenerated.questions.filter((question) => answers[question.id]?.trim()).length : 0;
   const attemptMinutes = selectedGenerated ? estimateAttemptMinutes(selectedGenerated) : 0;
+  const totalAttempts = generatedExams.reduce((total, exam) => total + exam.attempts.length, 0);
+  const lastAttempt = selectedGenerated?.attempts[0] ?? null;
 
   const openGenerator = () => {
     setSelectedExamId(exams[0]?.id ?? "");
@@ -74,6 +87,7 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
   const selectGeneratedExam = (examId: string) => {
     setSelectedGeneratedId(examId);
     setAttemptMode(false);
+    setAttemptStartedAt(null);
     setAnswers({});
     setRevealedAnswers({});
   };
@@ -81,13 +95,33 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
   const startAttempt = () => {
     if (!selectedGenerated) return;
     setAttemptMode(true);
+    setAttemptStartedAt(new Date().toISOString());
+    setFeedback("");
     setRevealedAnswers({});
     onStartTimer(`Practice exam: ${selectedGenerated.title}`, estimateAttemptMinutes(selectedGenerated));
   };
 
-  const finishAttempt = () => {
+  const finishAttempt = async () => {
+    if (!selectedGenerated || savingAttempt) return;
+    setSavingAttempt(true);
+    setFeedback("");
+    const response = await fetch(`/api/practice-exams/${selectedGenerated.id}/attempts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startedAt: attemptStartedAt ?? new Date().toISOString(), answers }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setSavingAttempt(false);
+    if (!response.ok) {
+      setFeedback(payload.error ?? "We couldn't save that attempt yet.");
+      return;
+    }
+    const attempt = payload.attempt as StudyPracticeExamAttempt | undefined;
+    if (attempt) onAttemptSaved(selectedGenerated.id, attempt);
     setAttemptMode(false);
+    setAttemptStartedAt(null);
     setRevealedAnswers(Object.fromEntries((selectedGenerated?.questions ?? []).map((question) => [question.id, true])));
+    setFeedback("Attempt saved. Marking guides are now visible.");
   };
 
   return (
@@ -103,9 +137,9 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
 
       <section className="practice-overview" aria-label="Practice exam overview">
         <article>
-          <span>Generated</span>
-          <strong>{generatedExams.length}</strong>
-          <p>{generatedExams.length === 1 ? "practice paper" : "practice papers"} saved in this session</p>
+          <span>Attempts</span>
+          <strong>{totalAttempts}</strong>
+          <p>{totalAttempts === 1 ? "completed sit" : "completed sits"} saved for review</p>
         </article>
         <article>
           <span>Planner source</span>
@@ -131,7 +165,7 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
           {generatedExams.length ? generatedExams.map((exam) => <button key={exam.id} className={selectedGenerated?.id === exam.id ? "practice-row active" : "practice-row"} onClick={() => selectGeneratedExam(exam.id)}>
             <span>{exam.format.toUpperCase()} · {exam.questions.length} Qs</span>
             <strong>{exam.title}</strong>
-            <small>{formatDateTime(exam.createdAt)}</small>
+            <small>{exam.attempts[0] ? `Last attempt ${formatDateTime(exam.attempts[0].completedAt)}` : `Generated ${formatDateTime(exam.createdAt)}`}</small>
           </button>) : <div className="practice-empty-list">
             <strong>Build your first paper</strong>
             <p>Use a planned exam as the scope, choose a format, and MedCompass will create a fake paper until the real AI provider is connected.</p>
@@ -145,13 +179,20 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
               <div>
                 <p className="eyebrow">Practice paper</p>
                 <h2>{selectedGenerated.title}</h2>
-                <p>{selectedGenerated.format} · {selectedGenerated.questions.length} questions · fake AI mode</p>
+                <p>{selectedGenerated.format} · {selectedGenerated.questions.length} questions · {selectedGenerated.attempts.length} saved attempts · fake AI mode</p>
               </div>
               <div className="paper-actions">
-                {attemptMode ? <button className="button dark" onClick={finishAttempt}>Finish attempt</button> : <button className="button ghost" onClick={startAttempt}>Start timed attempt · {attemptMinutes}m</button>}
+                {attemptMode ? <button className="button dark" onClick={finishAttempt} disabled={savingAttempt}>{savingAttempt ? "Saving…" : "Finish attempt"}</button> : <button className="button ghost" onClick={startAttempt}>Start timed attempt · {attemptMinutes}m</button>}
                 <button className="button ghost" onClick={openGenerator}>Generate another</button>
               </div>
             </div>
+            {lastAttempt && !attemptMode && <div className="attempt-banner calm">
+              <div>
+                <span>Last attempt</span>
+                <strong>{lastAttempt.answeredCount}/{lastAttempt.questionCount} answered</strong>
+              </div>
+              <p>Completed {formatDateTime(lastAttempt.completedAt)} in {formatDuration(lastAttempt.durationSeconds)}. Later this becomes scoring, weak-topic detection, and AI feedback.</p>
+            </div>}
             {attemptMode && <div className="attempt-banner">
               <div>
                 <span>Attempt mode</span>
@@ -159,6 +200,7 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
               </div>
               <p>Answers stay private in this browser for now. Use the floating timer while you work, then finish to reveal all marking guides.</p>
             </div>}
+            {feedback && <p className="practice-feedback" role="status">{feedback}</p>}
             <div className="standards-row">{selectedGenerated.standards.map((standard) => <span key={standard}>{standard}</span>)}</div>
             <div className="question-stack">{selectedGenerated.questions.map((question, index) => <article key={question.id}>
               <div className="question-meta">
@@ -253,10 +295,12 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
         .paper-heading p:not(.eyebrow) { margin: 6px 0 0; color: #6b7974; font-size: 12px; }
         .paper-actions { display: flex; gap: 8px; }
         .attempt-banner { display: flex; justify-content: space-between; gap: 18px; margin: 0 0 18px; padding: 14px 16px; border: 1px solid #cfe2d4; border-radius: 13px; background: linear-gradient(135deg, #e9f4ec, #fffefa); }
+        .attempt-banner.calm { border-color: #e0e8e2; background: #fbfcf9; }
         .attempt-banner div { display: grid; gap: 3px; }
         .attempt-banner span { color: #4d806d; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
         .attempt-banner strong { color: #263d37; font: 21px Georgia, serif; font-weight: 500; }
         .attempt-banner p { max-width: 520px; margin: 0; color: #61716b; font-size: 12px; line-height: 1.5; }
+        .practice-feedback { margin: 0 0 14px; color: #2e6b58; font-size: 12px; font-weight: 800; }
         .standards-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
         .standards-row span { border-radius: 999px; padding: 6px 8px; color: #53675f; background: #edf4ee; font-size: 10px; font-weight: 800; }
         .question-stack { display: grid; gap: 13px; }

@@ -157,4 +157,14 @@ export type StudyPracticeExam = {
   questions: PracticeExamQuestion[];
   standards: string[];
   createdAt: string;
+  attempts: StudyPracticeExamAttempt[];
+};
+
+export type StudyPracticeExamAttempt = {
+  id: string;
+  practiceExamId: string;
+  answeredCount: number;
+  questionCount: number;
+  durationSeconds: number;
+  completedAt: string;
 };

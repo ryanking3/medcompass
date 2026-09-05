@@ -32,6 +32,7 @@ function toPracticeExam(row: {
     questions: Array.isArray(row.questions) ? row.questions : [],
     standards: Array.isArray(row.standards) ? row.standards : [],
     createdAt: row.created_at,
+    attempts: [],
   };
 }
 

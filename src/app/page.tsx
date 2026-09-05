@@ -1,6 +1,6 @@
 import { SignInForm } from "@/components/SignInForm";
 import { StudyWorkspace } from "@/components/StudyWorkspace";
-import type { PracticeExamQuestion, StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyPracticeExam } from "@/components/types";
+import type { PracticeExamQuestion, StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyPracticeExam, StudyPracticeExamAttempt } from "@/components/types";
 import { createClient } from "@/lib/supabase/server";
 
 function asArray<T>(value: T | T[] | null | undefined): T[] {
@@ -103,7 +103,7 @@ export default async function Home() {
 
   const { data: practiceExamRows } = await supabase
     .from("practice_exams")
-    .select("id, source_exam_id, title, format, mode, questions, standards, created_at")
+    .select("id, source_exam_id, title, format, mode, questions, standards, created_at, practice_exam_attempts(id, practice_exam_id, answered_count, question_count, duration_seconds, completed_at)")
     .order("created_at", { ascending: false });
 
   const documents: StudyDocument[] = (documentRows ?? []).map((document) => ({
@@ -229,6 +229,16 @@ export default async function Home() {
     questions: asPracticeQuestions(exam.questions),
     standards: asStringArray(exam.standards),
     createdAt: exam.created_at,
+    attempts: asArray(exam.practice_exam_attempts)
+      .sort((first, second) => new Date(second.completed_at).getTime() - new Date(first.completed_at).getTime())
+      .map((attempt): StudyPracticeExamAttempt => ({
+        id: attempt.id,
+        practiceExamId: attempt.practice_exam_id,
+        answeredCount: attempt.answered_count,
+        questionCount: attempt.question_count,
+        durationSeconds: attempt.duration_seconds,
+        completedAt: attempt.completed_at,
+      })),
   }));
 
   return <StudyWorkspace userId={user.id} email={user.email ?? "Signed-in student"} fullName={profile?.full_name ?? metadataName} initialDocuments={documents} initialCourses={courses} initialNotes={notes} initialFlashcards={flashcards} initialExams={exams} initialAvailability={availability} initialPlanBlocks={planBlocks} initialPracticeExams={practiceExams} />;
