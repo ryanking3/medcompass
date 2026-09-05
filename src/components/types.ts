@@ -134,3 +134,27 @@ export type StudyPlanBlock = {
   title: string;
   status: StudyPlanBlockStatus;
 };
+
+export type PracticeExamFormat = "mcq" | "written" | "mixed";
+export type PracticeExamMode = "fake" | "openai";
+
+export type PracticeExamQuestion = {
+  id: string;
+  type: "mcq" | "written";
+  topicName: string;
+  prompt: string;
+  options?: string[];
+  answer: string;
+  rationale: string;
+};
+
+export type StudyPracticeExam = {
+  id: string;
+  examId: string | null;
+  title: string;
+  format: PracticeExamFormat;
+  mode: PracticeExamMode;
+  questions: PracticeExamQuestion[];
+  standards: string[];
+  createdAt: string;
+};

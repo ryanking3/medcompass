@@ -13,6 +13,28 @@ function integerField(value: unknown, fallback: number, min: number, max: number
   return typeof value === "number" && Number.isInteger(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }
 
+function toPracticeExam(row: {
+  id: string;
+  source_exam_id: string | null;
+  title: string;
+  format: string;
+  mode: string;
+  questions: unknown;
+  standards: unknown;
+  created_at: string;
+}) {
+  return {
+    id: row.id,
+    examId: row.source_exam_id,
+    title: row.title,
+    format: row.format,
+    mode: row.mode,
+    questions: Array.isArray(row.questions) ? row.questions : [],
+    standards: Array.isArray(row.standards) ? row.standards : [],
+    createdAt: row.created_at,
+  };
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -47,10 +69,31 @@ export async function POST(request: Request) {
     };
   });
 
-  return NextResponse.json(fakeMockExamResponse({
+  const generated = fakeMockExamResponse({
     examTitle: exam.title,
     format,
     questionCount,
     topics,
-  }));
+  });
+
+  const { data: practiceExam, error: insertError } = await supabase
+    .from("practice_exams")
+    .insert({
+      workspace_id: exam.workspace_id,
+      source_exam_id: exam.id,
+      title: generated.title,
+      format: generated.format,
+      mode: generated.mode,
+      question_count: generated.questions.length,
+      questions: generated.questions,
+      standards: generated.standards,
+    })
+    .select("id, source_exam_id, title, format, mode, questions, standards, created_at")
+    .single();
+
+  if (insertError || !practiceExam) {
+    return NextResponse.json({ error: "The mock exam was generated, but we couldn't save it yet." }, { status: 500 });
+  }
+
+  return NextResponse.json({ practiceExam: toPracticeExam(practiceExam) });
 }

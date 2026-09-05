@@ -7,7 +7,7 @@ import { DocumentLibrary } from "@/components/DocumentLibrary";
 import { DocumentReader } from "@/components/DocumentReader";
 import { AiChatPage } from "@/components/AiChatPage";
 import { TopicModal, UploadModal } from "@/components/modals";
-import { PracticeExams, type GeneratedPracticeExam } from "@/components/PracticeExams";
+import { PracticeExams } from "@/components/PracticeExams";
 import { TopicCards } from "@/components/TopicCards";
 import { TopicDashboard } from "@/components/TopicDashboard";
 import { TopicNotes } from "@/components/TopicNotes";
@@ -15,7 +15,7 @@ import { StudyPlanner } from "@/components/StudyPlanner";
 import { FloatingStudyTimer, StudyTimer, type ActiveStudyTimer } from "@/components/StudyTimer";
 import { StudyAtlas } from "@/components/StudyAtlas";
 import { WorkspaceHome } from "@/components/WorkspaceHome";
-import type { AppView, CreatedTopic, StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyTopic } from "@/components/types";
+import type { AppView, CreatedTopic, StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyPracticeExam, StudyTopic } from "@/components/types";
 import { createClient } from "@/lib/supabase/client";
 
 type StudyWorkspaceProps = {
@@ -29,9 +29,10 @@ type StudyWorkspaceProps = {
   initialExams: StudyExam[];
   initialAvailability: StudyAvailabilityRule[];
   initialPlanBlocks: StudyPlanBlock[];
+  initialPracticeExams: StudyPracticeExam[];
 };
 
-export function StudyWorkspace({ userId, email, fullName, initialDocuments, initialCourses, initialNotes, initialFlashcards, initialExams, initialAvailability, initialPlanBlocks }: StudyWorkspaceProps) {
+export function StudyWorkspace({ userId, email, fullName, initialDocuments, initialCourses, initialNotes, initialFlashcards, initialExams, initialAvailability, initialPlanBlocks, initialPracticeExams }: StudyWorkspaceProps) {
   const [view, setView] = useState<AppView>("home");
   const [toast, setToast] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -48,7 +49,7 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
   const [planBlocks, setPlanBlocks] = useState(initialPlanBlocks);
   const [courses, setCourses] = useState(initialCourses);
   const [activeTimer, setActiveTimer] = useState<ActiveStudyTimer | null>(null);
-  const [generatedPracticeExams, setGeneratedPracticeExams] = useState<GeneratedPracticeExam[]>([]);
+  const [generatedPracticeExams, setGeneratedPracticeExams] = useState<StudyPracticeExam[]>(initialPracticeExams);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(initialCourses[0]?.id ?? null);
   const [selectedTopic, setSelectedTopic] = useState<StudyTopic | null>(initialCourses[0]?.modules.flatMap((module) => module.topics)[0] ?? null);
 

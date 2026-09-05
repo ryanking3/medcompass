@@ -1,19 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AiMockExamResponse, MockExamFormat } from "@/lib/ai/types";
-import type { StudyExam } from "./types";
-
-export type GeneratedPracticeExam = AiMockExamResponse & {
-  id: string;
-  examId: string;
-  createdAt: string;
-};
+import type { MockExamFormat } from "@/lib/ai/types";
+import type { StudyExam, StudyPracticeExam } from "./types";
 
 type PracticeExamsProps = {
   exams: StudyExam[];
-  generatedExams: GeneratedPracticeExam[];
-  onGeneratedExamCreated: (exam: GeneratedPracticeExam) => void;
+  generatedExams: StudyPracticeExam[];
+  onGeneratedExamCreated: (exam: StudyPracticeExam) => void;
 };
 
 function formatDateTime(value: string) {
@@ -56,12 +50,11 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated }:
       setFeedback(payload.error ?? "We couldn't generate that mock exam.");
       return;
     }
-    const generatedExam: GeneratedPracticeExam = {
-      ...(payload as AiMockExamResponse),
-      id: crypto.randomUUID(),
-      examId: selectedExamId,
-      createdAt: new Date().toISOString(),
-    };
+    const generatedExam = payload.practiceExam as StudyPracticeExam | undefined;
+    if (!generatedExam) {
+      setFeedback("The generated paper came back in an unexpected shape.");
+      return;
+    }
     onGeneratedExamCreated(generatedExam);
     setSelectedGeneratedId(generatedExam.id);
     setGeneratorOpen(false);

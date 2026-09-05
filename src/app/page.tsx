@@ -1,6 +1,6 @@
 import { SignInForm } from "@/components/SignInForm";
 import { StudyWorkspace } from "@/components/StudyWorkspace";
-import type { StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock } from "@/components/types";
+import type { PracticeExamQuestion, StudyAvailabilityRule, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyPracticeExam } from "@/components/types";
 import { createClient } from "@/lib/supabase/server";
 
 function asArray<T>(value: T | T[] | null | undefined): T[] {
@@ -20,6 +20,29 @@ type NoteImageRow = {
   file_size: number;
   created_at: string;
 };
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
+function asPracticeQuestions(value: unknown): PracticeExamQuestion[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const question = entry as Record<string, unknown>;
+    if (typeof question.id !== "string" || typeof question.prompt !== "string" || typeof question.answer !== "string" || typeof question.rationale !== "string") return [];
+    const type = question.type === "mcq" ? "mcq" : "written";
+    return [{
+      id: question.id,
+      type,
+      topicName: typeof question.topicName === "string" ? question.topicName : "Study topic",
+      prompt: question.prompt,
+      options: Array.isArray(question.options) ? question.options.filter((option): option is string => typeof option === "string") : undefined,
+      answer: question.answer,
+      rationale: question.rationale,
+    }];
+  });
+}
 
 export default async function Home() {
   const supabase = await createClient();
@@ -77,6 +100,11 @@ export default async function Home() {
     .from("study_plan_blocks")
     .select("id, exam_id, topic_id, starts_on, duration_minutes, title, status, topics(id, name)")
     .order("starts_on", { ascending: true });
+
+  const { data: practiceExamRows } = await supabase
+    .from("practice_exams")
+    .select("id, source_exam_id, title, format, mode, questions, standards, created_at")
+    .order("created_at", { ascending: false });
 
   const documents: StudyDocument[] = (documentRows ?? []).map((document) => ({
     id: document.id,
@@ -192,5 +220,16 @@ export default async function Home() {
     status: block.status,
   }));
 
-  return <StudyWorkspace userId={user.id} email={user.email ?? "Signed-in student"} fullName={profile?.full_name ?? metadataName} initialDocuments={documents} initialCourses={courses} initialNotes={notes} initialFlashcards={flashcards} initialExams={exams} initialAvailability={availability} initialPlanBlocks={planBlocks} />;
+  const practiceExams: StudyPracticeExam[] = (practiceExamRows ?? []).map((exam) => ({
+    id: exam.id,
+    examId: exam.source_exam_id,
+    title: exam.title,
+    format: exam.format === "mcq" || exam.format === "written" || exam.format === "mixed" ? exam.format : "mixed",
+    mode: exam.mode === "openai" ? "openai" : "fake",
+    questions: asPracticeQuestions(exam.questions),
+    standards: asStringArray(exam.standards),
+    createdAt: exam.created_at,
+  }));
+
+  return <StudyWorkspace userId={user.id} email={user.email ?? "Signed-in student"} fullName={profile?.full_name ?? metadataName} initialDocuments={documents} initialCourses={courses} initialNotes={notes} initialFlashcards={flashcards} initialExams={exams} initialAvailability={availability} initialPlanBlocks={planBlocks} initialPracticeExams={practiceExams} />;
 }
