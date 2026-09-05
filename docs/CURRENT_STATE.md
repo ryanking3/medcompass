@@ -10,8 +10,9 @@ Sign in with a magic link
   → add exams and weekly availability when planning is needed
   → upload a permitted PDF and link it to a topic
   → extract its page text and read the private source
-  → write a cited note or create/edit source-linked cards
+  → write a cited note, create/edit source-linked cards, or send a highlighted passage to Chat
   → inspect the Study Atlas to see how those objects connect
+  → generate planner-scoped fake practice papers and save completed attempts
   → export kept cards as Anki-compatible CSV
 ```
 
@@ -28,10 +29,15 @@ This is deliberately useful without AI. Manual study outputs must remain editabl
 | Sources | PDF upload is private, validates the file type/size, can be linked to a topic, and shows processing state. |
 | Extraction | Server-side PDF.js extracts text page by page into `document_pages`; failures have a retry path. |
 | Reader | A signed private URL renders the original PDF in the browser. |
+| Reader → Chat | Highlighted/current-page source context can be sent into the primary Chat page with document, page, topic, and selected text attached. |
 | Notes | Topic notes are created and edited manually, with optional document/page/excerpt citations and inline pasted/uploaded images. |
 | Flashcards | Basic and cloze cards can be created, edited, deleted, marked as kept, linked to a source page, and exported to CSV for Anki. |
 | Study planner | Users can add exams, save weekly availability, generate topic-linked study blocks, and mark blocks planned/done/skipped. |
+| Chat foundation | A fake AI provider supports source questions, cited note drafts, flashcard drafts, prompt templates, and visible output standards while real AI integration waits. |
+| Practice exams | Fake mock exams can be generated from planner exams, persisted to Supabase, opened later, and sat in timed attempt mode. |
+| Practice attempts | Completed practice attempts are persisted with answer JSON, answered counts, duration, completion time, and per-paper attempt history. |
 | Study Atlas | A derived interactive mind map visualises courses, modules, topics, sources, notes, citations, card queues, exams, and upcoming planner blocks. |
+| Home/topic/library polish | Home includes a practice pulse, topic pages include a study brief, and Library includes source-readiness cards. |
 | Empty states | A new account starts with a real empty workspace rather than sample study data. |
 
 ## Important implementation details
@@ -44,23 +50,25 @@ This is deliberately useful without AI. Manual study outputs must remain editabl
 
 ## Not implemented yet
 
-- AI chat, source retrieval, embeddings, vector search, and AI-generated notes/cards.
+- Real AI chat, source retrieval, embeddings, vector search, and production AI-generated notes/cards.
 - Reliable AI handling of source images, diagrams, or scanned-PDF OCR.
-- Advanced reader annotations, bookmarks, and passage handoff.
+- Advanced reader annotations, bookmarks, and persistent highlights.
 - Rich-text notes, duplicate-card detection, review scheduling, `.apkg` export, or Anki synchronisation.
-- AI-assisted planner optimisation based on weak topics, source progress, notes, atlas gaps, or flashcard history.
+- AI-assisted planner optimisation based on weak topics, source progress, notes, atlas gaps, practice attempts, or flashcard history.
 - Google/passkey sign-in, account deletion, document deletion, or advanced profile editing.
 - Background workers/queues, observability, automated test coverage, CI, and production deployment.
 
 ## Next implementation priority
 
-Build the source-grounded AI foundation before adding broad new features:
+Move from fake AI flows to a trusted source-grounded AI layer:
 
 1. Produce permission-scoped chunks from extracted pages.
 2. Add retrieval and evidence evaluation for selected sources/pages.
 3. Introduce a provider adapter, initially for OpenAI, using a server-only API key.
 4. Return structured citations that open the exact supporting source page.
 5. Add AI-assisted explanations, note drafts, and card drafts only after citation behaviour is trustworthy.
+
+The current fake provider already exercises the UI/API shapes for Chat, source study actions, and mock exams. Keep those request/response contracts stable where possible when replacing fake responses with real provider calls.
 
 The app must distinguish answers supported by the student's source from general explanation and insufficient evidence. Diagram/image support is important for medical study and should be designed into this milestone, but it requires explicit vision/OCR evaluation rather than assuming extracted PDF text is enough.
 

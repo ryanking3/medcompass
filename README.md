@@ -10,16 +10,19 @@ The product is designed for medical study—not clinical decision-making. Do not
 - In-app account settings for profile name, email changes, password management, and sign out.
 - Private, row-level-secured workspaces with courses, modules, topics, and learning objectives.
 - Private PDF upload, topic linking, page-text extraction, retryable processing, and a signed in-browser reader.
+- Reader-to-Chat handoff for highlighted/current-page PDF context.
 - Manual, source-aware topic notes with page citations.
 - Inline note images for pasted/uploaded diagrams and screenshots.
 - Manual basic and cloze flashcards, source-page links, and Anki-compatible CSV export.
 - Study planner with exams, weekly availability, generated topic-linked calendar blocks, and block status tracking.
+- Fake AI Chat foundation for source Q&A, cited note drafts, flashcard drafts, prompt templates, and visible output standards.
+- Persisted fake mock exams generated from planner data, with timed practice attempts and saved attempt history.
 - Study Atlas: an interactive mind map derived from courses, modules, topics, sources, notes, citations, card queues, exams, and planner blocks.
-- Data-driven home, topic, library, notes, and cards views with clean empty states for new accounts.
+- Data-driven home, topic, library, practice, notes, and cards views with clean empty states for new accounts.
 
 ## What is next
 
-The next major milestone is the trusted AI layer: retrieval over a student's own sources, page-linked citations, and AI-assisted explanations, notes, and card drafts. AI answers, embeddings, OCR/diagram understanding, rich-text editing, direct Anki sync, and AI-assisted planner optimisation are not implemented yet.
+The next major milestone is replacing fake AI responses with the trusted AI layer: retrieval over a student's own sources, page-linked citations, and AI-assisted explanations, notes, cards, and practice feedback. Real AI answers, embeddings, OCR/diagram understanding, rich-text editing, direct Anki sync, and AI-assisted planner optimisation are not implemented yet.
 
 See [the current-state reference](docs/CURRENT_STATE.md) for the exact boundary between delivered and planned work.
 
@@ -56,6 +59,7 @@ The optional demo atlas seeding helper requires server-only Supabase credentials
 ## Documentation
 
 - [Current implementation state](docs/CURRENT_STATE.md)
+- [Next 10 build plan](docs/NEXT_10_BUILD_PLAN.md)
 - [Demo atlas seeding](docs/DEMO_ATLAS_SEEDING.md)
 - [Product specification](docs/PRODUCT_SPECIFICATION.md)
 - [v0.1 implementation plan](docs/V0_1_IMPLEMENTATION_PLAN.md)
