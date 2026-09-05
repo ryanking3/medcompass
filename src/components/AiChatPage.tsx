@@ -19,6 +19,7 @@ type AiChatPageProps = {
   onCardCreated: (card: StudyFlashcard) => void;
   onOpenNotesForTopic: (topicId: string) => void;
   onOpenCardsForTopic: (topicId: string) => void;
+  onOpenLibrary: () => void;
   launchContext: ChatLaunchContext | null;
   onLaunchContextConsumed: () => void;
 };
@@ -27,7 +28,7 @@ function flattenTopics(courses: StudyCourse[]) {
   return courses.flatMap((course) => course.modules.flatMap((module) => module.topics.map((topic) => ({ ...topic, courseName: course.name, moduleName: module.name }))));
 }
 
-export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, onOpenNotesForTopic, onOpenCardsForTopic, launchContext, onLaunchContextConsumed }: AiChatPageProps) {
+export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, onOpenNotesForTopic, onOpenCardsForTopic, onOpenLibrary, launchContext, onLaunchContextConsumed }: AiChatPageProps) {
   const topics = useMemo(() => flattenTopics(courses), [courses]);
   const [selectedDocumentId, setSelectedDocumentId] = useState(documents[0]?.id ?? "");
   const [selectedTopicId, setSelectedTopicId] = useState(topics[0]?.id ?? "");
@@ -38,9 +39,12 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState<AiSourceAction | null>(null);
   const [feedback, setFeedback] = useState("");
-  const selectedDocument = documents.find((document) => document.id === selectedDocumentId) ?? null;
-  const selectedTopic = topics.find((topic) => topic.id === selectedTopicId) ?? null;
-  const readyDocuments = documents.filter((document) => document.status === "ready");
+  const readyDocuments = useMemo(() => documents.filter((document) => document.status === "ready"), [documents]);
+  const selectedDocument = documents.find((document) => document.id === selectedDocumentId) ?? readyDocuments[0] ?? documents[0] ?? null;
+  const selectedTopic = topics.find((topic) => topic.id === selectedTopicId) ?? topics[0] ?? null;
+  const activeContextMatchesDocument = Boolean(activeLaunchContext && selectedDocument && activeLaunchContext.documentId === selectedDocument.id);
+  const activeContextPage = activeContextMatchesDocument ? activeLaunchContext?.page ?? 1 : 1;
+  const activeContextExcerpt = activeContextMatchesDocument ? activeLaunchContext?.selectedText?.trim() ?? "" : "";
   const promptStarters = [
     "Explain this like I’m revising the night before an exam.",
     "What are the likely MCQ traps in this topic?",
@@ -76,10 +80,10 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
       body: JSON.stringify({
         action,
         question: userPrompt,
-        selectedText: userPrompt,
+        selectedText: activeContextExcerpt || userPrompt,
         documentId: selectedDocument.id,
         topicId: selectedTopic?.id,
-        page: 1,
+        page: activeContextPage,
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -108,7 +112,24 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) return setFeedback(payload.error ?? "We couldn't save that note draft.");
-    onNoteCreated(payload.note as StudyNote);
+    let savedNote = payload.note as StudyNote;
+    if (selectedDocument) {
+      const citationResponse = await fetch(`/api/notes/${savedNote.id}/citations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: selectedDocument.id,
+          pageStart: result.noteDraft.citation.pageStart ?? activeContextPage,
+          pageEnd: result.noteDraft.citation.pageEnd ?? result.noteDraft.citation.pageStart ?? activeContextPage,
+          excerpt: result.noteDraft.citation.excerpt ?? activeContextExcerpt,
+        }),
+      });
+      const citationPayload = await citationResponse.json().catch(() => ({}));
+      if (citationResponse.ok && citationPayload.citation) {
+        savedNote = { ...savedNote, citations: [citationPayload.citation] };
+      }
+    }
+    onNoteCreated(savedNote);
     setFeedback("Note draft saved.");
   };
 
@@ -116,10 +137,12 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
     if (!result.flashcardDraft || !selectedTopic || !selectedDocument) return;
     setFeedback("");
     const draft = result.flashcardDraft;
+    const sourcePageStart = draft.source.pageStart ?? activeContextPage;
+    const sourcePageEnd = draft.source.pageEnd ?? sourcePageStart;
     const response = await fetch("/api/flashcards", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topicId: selectedTopic.id, kind: draft.kind, front: draft.front, back: draft.back, sourceDocumentId: selectedDocument.id, sourcePageStart: 1, sourcePageEnd: 1 }),
+      body: JSON.stringify({ topicId: selectedTopic.id, kind: draft.kind, front: draft.front, back: draft.back, sourceDocumentId: selectedDocument.id, sourcePageStart, sourcePageEnd }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) return setFeedback(payload.error ?? "We couldn't save that card draft.");
@@ -137,11 +160,17 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
         </div>
         <div className="chat-header-actions">
           <button className="button ghost" onClick={() => setStandardsOpen(true)}>AI standards</button>
+          <button className="button ghost" onClick={onOpenLibrary}>Library</button>
           <button className="button ghost" onClick={() => setContextOpen(true)}>Study context</button>
         </div>
       </header>
 
       <section className="chat-workbench">
+        {(!documents.length || !readyDocuments.length) && <div className="source-readiness-banner">
+          <span>{documents.length ? "Needs prep" : "No sources"}</span>
+          <p>{documents.length ? "Chat works best once a PDF has extracted pages. Prepare a source in Library to keep answers citeable." : "Upload a permitted PDF in Library before using source-aware Chat."}</p>
+          <button className="text-button" onClick={onOpenLibrary}>{documents.length ? "Prepare sources →" : "Open Library →"}</button>
+        </div>}
         <div className="context-strip">
           <div>
             <span>Source</span>
@@ -174,6 +203,7 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
               <span>✦</span>
               <h2>Start a study conversation.</h2>
               <p>Select a source, then ask for an explanation, a high-yield summary, a note draft, or a flashcard. Later this becomes the live AI cockpit.</p>
+              {!documents.length && <button className="button primary" onClick={onOpenLibrary}>Upload a source first</button>}
               <div className="starter-grid">
                 {promptStarters.map((starter) => <button key={starter} onClick={() => setPrompt(starter)}>{starter}</button>)}
               </div>
@@ -207,7 +237,7 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
           </div>
 
           <div className="drawer-section">
-            <label>Source<select value={selectedDocumentId} onChange={(event) => setSelectedDocumentId(event.target.value)}><option value="">Choose a source</option>{documents.map((document) => <option key={document.id} value={document.id}>{document.title}</option>)}</select></label>
+            <label>Source<select value={selectedDocument?.id ?? ""} onChange={(event) => setSelectedDocumentId(event.target.value)}><option value="">Choose a source</option>{documents.map((document) => <option key={document.id} value={document.id}>{document.title}</option>)}</select></label>
             <div className="source-summary">
               <strong>{readyDocuments.length} studyable sources</strong>
               <p>{selectedDocument ? `${selectedDocument.kind} · ${selectedDocument.pageCount ?? "unknown"} pages · ${selectedDocument.status}` : "Upload and extract PDFs in Library to make them available here."}</p>
@@ -215,7 +245,7 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
           </div>
 
           <div className="drawer-section">
-            <label>Topic<select value={selectedTopicId} onChange={(event) => setSelectedTopicId(event.target.value)}><option value="">No topic</option>{topics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>
+            <label>Topic<select value={selectedTopic?.id ?? ""} onChange={(event) => setSelectedTopicId(event.target.value)}><option value="">No topic</option>{topics.map((topic) => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select></label>
             {selectedTopic ? <div className="topic-summary">
               <strong>{selectedTopic.courseName}</strong>
               <p>{selectedTopic.moduleName}</p>
@@ -260,6 +290,10 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
         .chat-header h1 { max-width: 700px; margin: 0 0 10px; color: #202b2e; font: 48px Georgia, serif; font-weight: 500; letter-spacing: -1.7px; }
         .chat-header p:not(.eyebrow) { max-width: 720px; margin: 0; color: #66746f; font-size: 14px; line-height: 1.6; }
         .chat-workbench { border: 1px solid #e1e6e1; border-radius: 18px; background: #fffefa; box-shadow: 0 18px 45px rgba(32,52,42,.045); overflow: hidden; }
+        .source-readiness-banner { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid #e3e8e2; background: #fff6e3; color: #6d562f; }
+        .source-readiness-banner span { flex: 0 0 auto; border-radius: 999px; padding: 5px 8px; background: #f1dfb7; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+        .source-readiness-banner p { flex: 1; margin: 0; font-size: 12px; line-height: 1.45; }
+        .source-readiness-banner .text-button { color: #6d562f; white-space: nowrap; }
         .context-strip { min-height: 70px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr) auto; align-items: center; gap: 18px; padding: 14px 18px; border-bottom: 1px solid #e3e8e2; background: linear-gradient(135deg, #fffefa, #f4f7f2); }
         .context-strip div { min-width: 0; display: grid; gap: 3px; }
         .context-strip span { color: #718078; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
@@ -317,7 +351,7 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
         .standards-groups article { padding: 16px; border: 1px solid #e0e8e2; border-radius: 13px; background: #fbfcf9; }
         .standards-groups h3 { margin: 0 0 10px; color: #263d37; font: 22px Georgia, serif; font-weight: 500; text-transform: capitalize; }
         .standards-groups ul { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: #52635d; font-size: 12px; line-height: 1.45; }
-        @media (max-width: 980px) { .chat-page { padding: 40px 34px 90px; }.chat-header { display: grid; }.context-strip { grid-template-columns: 1fr; align-items: start; }.chat-thread article { width: 100%; }.starter-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 980px) { .chat-page { padding: 40px 34px 90px; }.chat-header { display: grid; }.source-readiness-banner { align-items: flex-start; flex-direction: column; }.context-strip { grid-template-columns: 1fr; align-items: start; }.chat-thread article { width: 100%; }.starter-grid { grid-template-columns: 1fr; } }
         @media (max-width: 620px) { .chat-page { padding: 30px 18px 80px; }.chat-header h1 { font-size: 38px; }.chat-thread { padding: 20px; }.chat-composer div { display: grid; }.message-avatar { display: none; } }
       `}</style>
     </div>

@@ -25,6 +25,11 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
 }
 
+function asTextAnswerMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+}
+
 function asPracticeQuestions(value: unknown): PracticeExamQuestion[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((entry) => {
@@ -103,7 +108,7 @@ export default async function Home() {
 
   const { data: practiceExamRows } = await supabase
     .from("practice_exams")
-    .select("id, source_exam_id, title, format, mode, questions, standards, created_at, practice_exam_attempts(id, practice_exam_id, answered_count, question_count, duration_seconds, completed_at)")
+    .select("id, source_exam_id, title, format, mode, questions, standards, created_at, practice_exam_attempts(id, practice_exam_id, answered_count, question_count, duration_seconds, completed_at, answers)")
     .order("created_at", { ascending: false });
 
   const documents: StudyDocument[] = (documentRows ?? []).map((document) => ({
@@ -238,6 +243,7 @@ export default async function Home() {
         questionCount: attempt.question_count,
         durationSeconds: attempt.duration_seconds,
         completedAt: attempt.completed_at,
+        answers: asTextAnswerMap(attempt.answers),
       })),
   }));
 

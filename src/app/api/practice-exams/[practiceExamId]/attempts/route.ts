@@ -33,6 +33,7 @@ function toAttempt(row: {
   question_count: number;
   duration_seconds: number;
   completed_at: string;
+  answers: Record<string, string>;
 }) {
   return {
     id: row.id,
@@ -41,6 +42,7 @@ function toAttempt(row: {
     questionCount: row.question_count,
     durationSeconds: row.duration_seconds,
     completedAt: row.completed_at,
+    answers: row.answers,
   };
 }
 
@@ -84,7 +86,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pra
       question_count: validQuestionIds.size,
       answers,
     })
-    .select("id, practice_exam_id, answered_count, question_count, duration_seconds, completed_at")
+    .select("id, practice_exam_id, answered_count, question_count, duration_seconds, completed_at, answers")
     .single();
 
   if (attemptError || !attempt) return NextResponse.json({ error: "We couldn't save that attempt. Please try again." }, { status: 500 });

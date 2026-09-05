@@ -13,6 +13,7 @@ type StudyPlannerProps = {
   onPlanBlocksChange: Dispatch<SetStateAction<StudyPlanBlock[]>>;
   onCreateTopic: () => void;
   onOpenTopic: (topic: StudyTopic) => void;
+  onOpenPractice: () => void;
 };
 
 const weekdays = [
@@ -88,7 +89,7 @@ function availabilityMinutesBetween(startDate: string, endDate: string, availabi
   return total;
 }
 
-export function StudyPlanner({ courses, exams, availability, planBlocks, onExamsChange, onAvailabilityChange, onPlanBlocksChange, onCreateTopic, onOpenTopic }: StudyPlannerProps) {
+export function StudyPlanner({ courses, exams, availability, planBlocks, onExamsChange, onAvailabilityChange, onPlanBlocksChange, onCreateTopic, onOpenTopic, onOpenPractice }: StudyPlannerProps) {
   const topics = useMemo(() => courses.flatMap((course) => course.modules.flatMap((module) => module.topics.map((topic) => ({ ...topic, courseId: course.id, courseName: course.name })))), [courses]);
   const availabilityRules = useMemo(() => buildInitialAvailability(availability as StudyAvailabilityRule[]), [availability]);
   const [calendarStart, setCalendarStart] = useState(todayString());
@@ -252,6 +253,7 @@ export function StudyPlanner({ courses, exams, availability, planBlocks, onExams
         <div>
           <button className="button soft" onClick={() => setAvailabilityModalOpen(true)}>Availability</button>
           <button className="button soft" onClick={() => setExamDrawerOpen(true)}>Exams</button>
+          <button className="button soft" onClick={onOpenPractice}>Practice</button>
           <button className="button primary" onClick={openCreateExamModal}>+ Add exam</button>
         </div>
       </div>
@@ -296,6 +298,7 @@ export function StudyPlanner({ courses, exams, availability, planBlocks, onExams
           {selectedCapacityGap > 0 && <aside className="planner-alert"><strong>Availability is short.</strong><span>{minutesLabel(selectedExam.targetMinutes)} requested, but {minutesLabel(selectedCapacity)} is open before this exam.</span></aside>}
           <button className="button soft full-width" onClick={openEditExamModal}>Edit details</button>
           <button className="button dark full-width" onClick={generatePlan} disabled={busy === "generate"}>{busy === "generate" ? "Generating..." : "Generate study blocks"}</button>
+          <button className="button soft full-width" onClick={onOpenPractice}>Generate mock exam</button>
         </section>}
       </aside>
     </div>}

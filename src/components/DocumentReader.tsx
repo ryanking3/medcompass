@@ -62,6 +62,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
   const [zoom, setZoom] = useState(100);
   const [copiedCitation, setCopiedCitation] = useState(false);
   const [sourcePanelOpen, setSourcePanelOpen] = useState(true);
+  const [bookmarkedPages, setBookmarkedPages] = useState<number[]>([]);
   const [noteTopicId, setNoteTopicId] = useState(document.linkedTopics[0]?.id ?? "");
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   const [noteFeedback, setNoteFeedback] = useState("");
@@ -176,6 +177,10 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
     } catch {
       setPreparationError("We couldn’t copy the citation from this browser. You can still cite the current page manually.");
     }
+  }
+
+  function toggleBookmark(page: number) {
+    setBookmarkedPages((pages) => pages.includes(page) ? pages.filter((entry) => entry !== page) : [...pages, page].sort((first, second) => first - second));
   }
 
   function selectedPdfText() {
@@ -436,6 +441,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
         <div className="document-reader-title"><strong>{document.title}</strong><span>Private PDF · {status.label}</span></div>
         <div className="reader-header-actions">
           <button className="reader-panel-toggle" onClick={() => setSourcePanelOpen((open) => !open)}>{sourcePanelOpen ? "Hide source" : "Show source"}</button>
+          <button className={bookmarkedPages.includes(visiblePage) ? "reader-bookmark-button active" : "reader-bookmark-button"} onClick={() => toggleBookmark(visiblePage)}>{bookmarkedPages.includes(visiblePage) ? "Saved" : "Bookmark"}</button>
           <button className="reader-icon-button" onClick={() => goToPage(visiblePage - 1)} disabled={visiblePage <= 1}>‹</button>
           <label className="reader-page-control"><span>Page</span><input type="number" min="1" max={pdfPageCount ?? undefined} value={visiblePage} onChange={(event) => goToPage(Number(event.target.value))} />{pdfPageCount && <small>/ {pdfPageCount}</small>}</label>
           <button className="reader-icon-button" onClick={() => goToPage(visiblePage + 1)} disabled={Boolean(pdfPageCount && visiblePage >= pdfPageCount)}>›</button>
@@ -467,6 +473,15 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
               <div className="page-map-progress"><span style={{ width: `${pageProgress ?? 0}%` }} /></div>
               <p className="page-map-copy">{pdfPageCount ? `${pdfPageCount - visiblePage} ${pdfPageCount - visiblePage === 1 ? "page" : "pages"} left in this source.` : "Reading position will update as you scroll."}</p>
             </> : <small>Open the PDF to build a page map.</small>}
+          </div>
+          <div className="reader-bookmarks">
+            <div className="bookmarks-heading">
+              <p className="eyebrow">Page shortlist</p>
+              <button onClick={() => toggleBookmark(visiblePage)}>{bookmarkedPages.includes(visiblePage) ? "Remove current" : "+ Current page"}</button>
+            </div>
+            {bookmarkedPages.length ? <div className="bookmark-list">
+              {bookmarkedPages.map((page) => <button key={page} className={page === visiblePage ? "active" : ""} onClick={() => goToPage(page)}>Page {page}</button>)}
+            </div> : <small>Bookmark useful diagrams, tables, or explanations while reading. These are temporary for this session.</small>}
           </div>
         </aside>}
 
@@ -634,6 +649,7 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
         }
 
         .reader-panel-toggle,
+        .reader-bookmark-button,
         .reader-icon-button,
         .reader-zoom button {
           display: grid;
@@ -649,6 +665,17 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
         .reader-panel-toggle {
           padding: 0 9px;
           font-size: 11px;
+        }
+
+        .reader-bookmark-button {
+          padding: 0 10px;
+          font-size: 11px;
+        }
+
+        .reader-bookmark-button.active {
+          border-color: #bdd7c3;
+          color: #315f54;
+          background: #e6f1e8;
         }
 
         .reader-icon-button,
@@ -784,7 +811,8 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
 
         .reader-source-meta,
         .reader-topic-links,
-        .reader-page-rail {
+        .reader-page-rail,
+        .reader-bookmarks {
           margin-top: 22px;
           padding-top: 18px;
           border-top: 1px solid #e0e5df;
@@ -882,6 +910,44 @@ export function DocumentReader({ document, onBack, onDocumentUpdated, onNoteCrea
           color: #78857f;
           font-size: 10px;
           line-height: 1.45;
+        }
+
+        .bookmarks-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+
+        .bookmarks-heading button {
+          border: 0;
+          padding: 0;
+          color: #3d796d;
+          background: transparent;
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        .bookmark-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .bookmark-list button {
+          border: 1px solid #dce8df;
+          border-radius: 999px;
+          padding: 6px 8px;
+          color: #426f62;
+          background: #fffefa;
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        .bookmark-list button.active {
+          border-color: #bdd7c3;
+          background: #e6f1e8;
         }
 
         .document-reader-canvas {

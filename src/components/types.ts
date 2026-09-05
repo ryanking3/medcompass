@@ -167,6 +167,7 @@ export type StudyPracticeExamAttempt = {
   questionCount: number;
   durationSeconds: number;
   completedAt: string;
+  answers: Record<string, string>;
 };
 
 export type ChatLaunchContext = {

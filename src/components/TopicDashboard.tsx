@@ -1,7 +1,7 @@
 "use client";
 
 import { TopicAtlasPanel } from "./TopicAtlasPanel";
-import type { StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyTopic } from "./types";
+import type { ChatLaunchContext, StudyCourse, StudyDocument, StudyExam, StudyFlashcard, StudyNote, StudyPlanBlock, StudyTopic } from "./types";
 
 type TopicDashboardProps = {
   topic: StudyTopic;
@@ -16,9 +16,10 @@ type TopicDashboardProps = {
   onOpenCards: () => void;
   onOpenUpload: () => void;
   onOpenPlanner: () => void;
+  onOpenChatWithContext: (context: ChatLaunchContext) => void;
 };
 
-export function TopicDashboard({ topic, course, documents, notes, flashcards, exams, planBlocks, onOpenDocument, onOpenNotes, onOpenCards, onOpenUpload, onOpenPlanner }: TopicDashboardProps) {
+export function TopicDashboard({ topic, course, documents, notes, flashcards, exams, planBlocks, onOpenDocument, onOpenNotes, onOpenCards, onOpenUpload, onOpenPlanner, onOpenChatWithContext }: TopicDashboardProps) {
   const topicDocuments = documents.filter((document) => document.linkedTopics.some((linkedTopic) => linkedTopic.id === topic.id));
   const topicNotes = notes.filter((note) => note.topicId === topic.id);
   const topicCards = flashcards.filter((card) => card.topicId === topic.id);
@@ -27,6 +28,21 @@ export function TopicDashboard({ topic, course, documents, notes, flashcards, ex
   const linkedExams = exams.filter((exam) => exam.topics.some((examTopic) => examTopic.topicId === topic.id));
   const upcomingBlocks = planBlocks.filter((block) => block.topicId === topic.id && block.status === "planned").sort((first, second) => first.startsOn.localeCompare(second.startsOn));
   const briefAction = !topicDocuments.length ? "Add a source" : !topicNotes.length ? "Write first note" : !keptCards ? "Create cards" : upcomingBlocks.length ? "Study next block" : "Plan revision";
+  const primaryDocument = topicDocuments.find((document) => document.status === "ready") ?? topicDocuments[0] ?? null;
+  const askChat = () => onOpenChatWithContext({
+    id: crypto.randomUUID(),
+    source: "topic",
+    topicId: topic.id,
+    documentId: primaryDocument?.id,
+    documentTitle: primaryDocument?.title,
+    page: primaryDocument ? 1 : undefined,
+    prompt: [
+      `Help me study the topic "${topic.name}".`,
+      topic.learningObjectives[0]?.body ? `Learning objective: ${topic.learningObjectives[0].body}` : "Start by outlining what I should understand.",
+      topicNotes.length ? `I already have ${topicNotes.length} note${topicNotes.length === 1 ? "" : "s"} here.` : "I do not have notes yet.",
+      topicCards.length ? `I have ${topicCards.length} flashcard draft${topicCards.length === 1 ? "" : "s"}.` : "Suggest a small set of active recall cards.",
+    ].join("\n"),
+  });
 
   return <div className="topic-dashboard">
     <header className="topic-header"><div><p className="breadcrumb">{course?.name ?? "Study workspace"} <span>/</span> Topic</p><h1>{topic.name}</h1><p className="objective"><span>Learning objective</span> {topic.learningObjectives[0]?.body ?? "Add a learning objective when you are ready to focus this topic."}</p></div><button className="button primary" onClick={onOpenUpload}>+ Add source</button></header>
@@ -45,6 +61,7 @@ export function TopicDashboard({ topic, course, documents, notes, flashcards, ex
       <div className="brief-actions">
         <button className="button ghost" onClick={onOpenNotes}>{topicNotes.length ? "Open notes" : "Write note"}</button>
         <button className="button ghost" onClick={onOpenCards}>{topicCards.length ? "Review cards" : "Make cards"}</button>
+        <button className="button ghost" onClick={askChat}>Ask Chat</button>
         <button className="button ghost" onClick={onOpenPlanner}>Plan</button>
       </div>
     </section>
