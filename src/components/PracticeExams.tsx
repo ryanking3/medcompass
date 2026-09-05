@@ -31,6 +31,7 @@ function formatDuration(seconds: number) {
 
 export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, onAttemptSaved, onStartTimer }: PracticeExamsProps) {
   const [generatorOpen, setGeneratorOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState(exams[0]?.id ?? "");
   const [format, setFormat] = useState<MockExamFormat>("mixed");
   const [questionCount, setQuestionCount] = useState(6);
@@ -124,6 +125,16 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
     setFeedback("Attempt saved. Marking guides are now visible.");
   };
 
+  const resetAttemptAnswers = () => {
+    setAnswers({});
+    setRevealedAnswers({});
+    setFeedback("Attempt answers cleared for this paper.");
+  };
+
+  const revealAllGuides = () => {
+    setRevealedAnswers(Object.fromEntries((selectedGenerated?.questions ?? []).map((question) => [question.id, true])));
+  };
+
   return (
     <div className="practice-page">
       <header className="practice-header">
@@ -182,6 +193,7 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
                 <p>{selectedGenerated.format} · {selectedGenerated.questions.length} questions · {selectedGenerated.attempts.length} saved attempts · fake AI mode</p>
               </div>
               <div className="paper-actions">
+                {selectedGenerated.attempts.length > 0 && <button className="button ghost" onClick={() => setHistoryOpen(true)}>Attempt history</button>}
                 {attemptMode ? <button className="button dark" onClick={finishAttempt} disabled={savingAttempt}>{savingAttempt ? "Saving…" : "Finish attempt"}</button> : <button className="button ghost" onClick={startAttempt}>Start timed attempt · {attemptMinutes}m</button>}
                 <button className="button ghost" onClick={openGenerator}>Generate another</button>
               </div>
@@ -198,7 +210,11 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
                 <span>Attempt mode</span>
                 <strong>{answeredCount}/{selectedGenerated.questions.length} answered</strong>
               </div>
-              <p>Answers stay private in this browser for now. Use the floating timer while you work, then finish to reveal all marking guides.</p>
+              <p>Answers save when you finish. Use reset if you want a clean restart, or reveal guides for a quick open-book review.</p>
+              <div className="attempt-controls">
+                <button onClick={resetAttemptAnswers} disabled={!answeredCount}>Reset answers</button>
+                <button onClick={revealAllGuides}>Reveal guides</button>
+              </div>
             </div>}
             {feedback && <p className="practice-feedback" role="status">{feedback}</p>}
             <div className="standards-row">{selectedGenerated.standards.map((standard) => <span key={standard}>{standard}</span>)}</div>
@@ -266,6 +282,25 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
         </section>
       </div>}
 
+      {historyOpen && selectedGenerated && <div className="practice-drawer-backdrop" onMouseDown={() => setHistoryOpen(false)}>
+        <section className="practice-drawer history-drawer" role="dialog" aria-modal="true" aria-labelledby="practice-history-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="modal-heading">
+            <div>
+              <p className="eyebrow">Attempt history</p>
+              <h2 id="practice-history-title">{selectedGenerated.title}</h2>
+            </div>
+            <button className="modal-close" onClick={() => setHistoryOpen(false)} aria-label="Close attempt history">×</button>
+          </div>
+          {selectedGenerated.attempts.length ? <div className="history-list">
+            {selectedGenerated.attempts.map((attempt, index) => <article key={attempt.id}>
+              <span>Attempt {selectedGenerated.attempts.length - index}</span>
+              <strong>{attempt.answeredCount}/{attempt.questionCount} answered</strong>
+              <p>{formatDateTime(attempt.completedAt)} · {formatDuration(attempt.durationSeconds)}</p>
+            </article>)}
+          </div> : <div className="practice-empty-list">No saved attempts yet. Start a timed attempt and finish it to create history.</div>}
+        </section>
+      </div>}
+
       <style jsx>{`
         .practice-page { max-width: 1280px; margin: 0 auto; padding: 55px 58px 100px; }
         .practice-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 30px; }
@@ -300,6 +335,8 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
         .attempt-banner span { color: #4d806d; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
         .attempt-banner strong { color: #263d37; font: 21px Georgia, serif; font-weight: 500; }
         .attempt-banner p { max-width: 520px; margin: 0; color: #61716b; font-size: 12px; line-height: 1.5; }
+        .attempt-controls { display: flex; gap: 7px; align-items: center; }
+        .attempt-controls button { border: 1px solid #d8e3da; border-radius: 999px; padding: 8px 10px; color: #3d6f63; background: #fffefa; font-size: 11px; font-weight: 800; }
         .practice-feedback { margin: 0 0 14px; color: #2e6b58; font-size: 12px; font-weight: 800; }
         .standards-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
         .standards-row span { border-radius: 999px; padding: 6px 8px; color: #53675f; background: #edf4ee; font-size: 10px; font-weight: 800; }
@@ -322,6 +359,12 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
         .practice-empty p { max-width: 420px; margin: 0; font-size: 13px; line-height: 1.55; }
         .practice-drawer-backdrop { position: fixed; inset: 0; z-index: 90; display: flex; justify-content: flex-end; background: rgba(22,36,31,.24); backdrop-filter: blur(4px); }
         .practice-drawer { width: min(470px, 100%); height: 100%; overflow: auto; padding: 28px; border-left: 1px solid #dce6de; background: #fffefa; box-shadow: -24px 0 60px rgba(24,43,36,.15); }
+        .history-drawer { width: min(420px, 100%); }
+        .history-list { display: grid; gap: 10px; margin-top: 24px; }
+        .history-list article { padding: 15px; border: 1px solid #e0e8e2; border-radius: 12px; background: #fbfcf9; }
+        .history-list span { color: #4d806d; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+        .history-list strong { display: block; margin-top: 6px; color: #263d37; font: 22px Georgia, serif; font-weight: 500; }
+        .history-list p { margin: 5px 0 0; color: #65756e; font-size: 12px; }
         .modal-close { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #d9e3db; border-radius: 999px; color: #546761; background: #fbfcf9; font-size: 21px; line-height: 1; }
         .generator-form { display: grid; gap: 15px; margin-top: 24px; }
         .generator-form label { display: grid; gap: 7px; color: #3f504d; font-size: 12px; font-weight: 700; }
