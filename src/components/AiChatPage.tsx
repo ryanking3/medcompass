@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { aiStudyStandards } from "@/lib/ai/standards";
 import type { AiSourceAction, AiSourceStudyResponse } from "@/lib/ai/types";
 import type { ChatLaunchContext, StudyCourse, StudyDocument, StudyFlashcard, StudyNote } from "./types";
 
@@ -31,6 +32,7 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
   const [selectedDocumentId, setSelectedDocumentId] = useState(documents[0]?.id ?? "");
   const [selectedTopicId, setSelectedTopicId] = useState(topics[0]?.id ?? "");
   const [contextOpen, setContextOpen] = useState(false);
+  const [standardsOpen, setStandardsOpen] = useState(false);
   const [activeLaunchContext, setActiveLaunchContext] = useState<ChatLaunchContext | null>(null);
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -133,7 +135,10 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
           <h1>Your source-aware study assistant.</h1>
           <p>Ask questions, draft notes, and make flashcards from your PDFs and topic structure. Responses are fake for now, but the product flow is wired for the real model.</p>
         </div>
-        <button className="button ghost" onClick={() => setContextOpen(true)}>Study context</button>
+        <div className="chat-header-actions">
+          <button className="button ghost" onClick={() => setStandardsOpen(true)}>AI standards</button>
+          <button className="button ghost" onClick={() => setContextOpen(true)}>Study context</button>
+        </div>
       </header>
 
       <section className="chat-workbench">
@@ -177,6 +182,11 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
           {feedback && <p className="chat-feedback" role="status">{feedback}</p>}
           <div className="chat-composer">
             <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ask about a textbook section, lecture PDF, or topic…" />
+            <div className="template-row">
+              <button onClick={() => setPrompt("Create a source-grounded explanation with citations and one check-yourself question.")}>Source answer template</button>
+              <button onClick={() => setPrompt("Draft a concise note in student-owned wording with bullets and a page citation.")}>Note template</button>
+              <button onClick={() => setPrompt("Create one high-quality active-recall flashcard from this context.")}>Card template</button>
+            </div>
             <div>
               <button className="button ghost" onClick={() => runAction("note")} disabled={!selectedDocument || busy !== null}>{busy === "note" ? "Drafting…" : "Draft note"}</button>
               <button className="button ghost" onClick={() => runAction("flashcard")} disabled={!selectedDocument || busy !== null}>{busy === "flashcard" ? "Drafting…" : "Draft card"}</button>
@@ -225,9 +235,28 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
         </aside>
       </div>}
 
+      {standardsOpen && <div className="context-backdrop" onMouseDown={() => setStandardsOpen(false)}>
+        <aside className="context-drawer standards-drawer" role="dialog" aria-modal="true" aria-labelledby="standards-drawer-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="drawer-heading">
+            <div>
+              <p className="eyebrow">AI standards</p>
+              <h2 id="standards-drawer-title">Templates for useful output</h2>
+            </div>
+            <button className="drawer-close" onClick={() => setStandardsOpen(false)} aria-label="Close AI standards">×</button>
+          </div>
+          <div className="standards-groups">
+            {Object.entries(aiStudyStandards).map(([key, standards]) => <article key={key}>
+              <h3>{key === "sourceAnswer" ? "Source answers" : key === "mockExam" ? "Mock exams" : key}</h3>
+              <ul>{standards.map((standard) => <li key={standard}>{standard}</li>)}</ul>
+            </article>)}
+          </div>
+        </aside>
+      </div>}
+
       <style jsx>{`
         .chat-page { max-width: 1280px; margin: 0 auto; padding: 55px 58px 100px; }
         .chat-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 28px; }
+        .chat-header-actions { display: flex; gap: 8px; }
         .chat-header h1 { max-width: 700px; margin: 0 0 10px; color: #202b2e; font: 48px Georgia, serif; font-weight: 500; letter-spacing: -1.7px; }
         .chat-header p:not(.eyebrow) { max-width: 720px; margin: 0; color: #66746f; font-size: 14px; line-height: 1.6; }
         .chat-workbench { border: 1px solid #e1e6e1; border-radius: 18px; background: #fffefa; box-shadow: 0 18px 45px rgba(32,52,42,.045); overflow: hidden; }
@@ -270,8 +299,11 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
         .chat-composer { display: grid; gap: 10px; padding: 14px; border-top: 1px solid #e1e6e1; background: #fffefa; }
         .chat-composer textarea { min-height: 82px; resize: vertical; border: 1px solid #d5ddd6; border-radius: 12px; padding: 13px; color: #20343a; background: #fbfcf9; outline-color: #497970; font-size: 13px; line-height: 1.5; }
         .chat-composer div { display: flex; justify-content: flex-end; gap: 8px; }
+        .chat-composer .template-row { justify-content: flex-start; flex-wrap: wrap; }
+        .template-row button { border: 1px solid #dfe8e1; border-radius: 999px; padding: 7px 10px; color: #4d6d64; background: #f7faf6; font-size: 11px; font-weight: 800; }
         .context-backdrop { position: fixed; inset: 0; z-index: 90; display: flex; justify-content: flex-end; background: rgba(22,36,31,.24); backdrop-filter: blur(4px); }
         .context-drawer { width: min(430px, 100%); height: 100%; overflow: auto; padding: 28px; border-left: 1px solid #dce6de; background: #fffefa; box-shadow: -24px 0 60px rgba(24,43,36,.15); }
+        .standards-drawer { width: min(520px, 100%); }
         .drawer-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 24px; }
         .drawer-heading h2 { margin: 0; color: #263d37; font: 29px Georgia, serif; font-weight: 500; letter-spacing: -.6px; }
         .drawer-close { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #d9e3db; border-radius: 999px; color: #546761; background: #fbfcf9; font-size: 21px; line-height: 1; }
@@ -281,6 +313,10 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
         .source-summary, .topic-summary { padding: 13px; border: 1px solid #dce8df; border-radius: 12px; background: #eef6f0; }
         .source-summary strong, .topic-summary strong { color: #29453e; font-size: 13px; }
         .source-summary p, .topic-summary p, .drawer-help { margin: 5px 0 0; color: #6b7974; font-size: 12px; line-height: 1.5; }
+        .standards-groups { display: grid; gap: 12px; }
+        .standards-groups article { padding: 16px; border: 1px solid #e0e8e2; border-radius: 13px; background: #fbfcf9; }
+        .standards-groups h3 { margin: 0 0 10px; color: #263d37; font: 22px Georgia, serif; font-weight: 500; text-transform: capitalize; }
+        .standards-groups ul { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: #52635d; font-size: 12px; line-height: 1.45; }
         @media (max-width: 980px) { .chat-page { padding: 40px 34px 90px; }.chat-header { display: grid; }.context-strip { grid-template-columns: 1fr; align-items: start; }.chat-thread article { width: 100%; }.starter-grid { grid-template-columns: 1fr; } }
         @media (max-width: 620px) { .chat-page { padding: 30px 18px 80px; }.chat-header h1 { font-size: 38px; }.chat-thread { padding: 20px; }.chat-composer div { display: grid; }.message-avatar { display: none; } }
       `}</style>
