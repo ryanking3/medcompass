@@ -7,9 +7,10 @@ The product is designed for medical study—not clinical decision-making. Do not
 ## What works today
 
 - Supabase authentication with email/password sign-in, account creation, password reset, and magic-link fallback.
-- In-app account settings for profile name, email changes, password management, and sign out.
+- In-app account settings for profile name, email changes, password management, lightweight workspace export, and sign out.
 - Private, row-level-secured workspaces with courses, modules, topics, and learning objectives.
 - Private PDF upload, topic linking, page-text extraction, retryable processing from Library/reader, and a signed continuous PDF reader.
+- Intentional source deletion from Library, including database cleanup and best-effort private file removal.
 - Reader-to-Chat, Topic-to-Chat, and Practice-to-Chat handoffs for source-aware study prompts.
 - Temporary reader page bookmarks for shortlisting useful source pages while studying.
 - Manual, source-aware topic notes with page citations.
@@ -17,9 +18,12 @@ The product is designed for medical study—not clinical decision-making. Do not
 - Manual basic and cloze flashcards, source-page links, and Anki-compatible CSV export.
 - Study planner with exams, weekly availability, generated topic-linked calendar blocks, and block status tracking.
 - Fake AI Chat foundation for source Q&A, cited note drafts, flashcard drafts, prompt templates, source-readiness guidance, and visible output standards.
+- Server-side AI provider status scaffolding so fake mode can later be swapped for OpenAI without leaking secrets.
 - Persisted fake mock exams generated from planner data, with timed practice attempts, saved answer history, and answer review.
+- Generated practice paper deletion, including saved attempts.
 - Study Atlas: an interactive mind map derived from courses, modules, topics, sources, notes, citations, card queues, exams, and planner blocks.
 - Data-driven home, topic, library, practice, notes, and cards views with clean empty states for new accounts.
+- App-level loading and error states for safer beta testing.
 
 ## What is next
 
@@ -44,6 +48,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_publishable_key
 ```
 
+AI is optional for now. Leave `MEDCOMPASS_AI_PROVIDER=fake` while using deterministic placeholder responses. Later, set `MEDCOMPASS_AI_PROVIDER=openai` and add a server-only `OPENAI_API_KEY` when real AI integration is ready.
+
 Open [http://localhost:3000](http://localhost:3000), request a magic link, and sign in. Configure the redirect URLs described in [Supabase auth setup](docs/SUPABASE_AUTH_SETUP.md) before testing authentication.
 
 ## Commands
@@ -62,6 +68,7 @@ The optional demo atlas seeding helper requires server-only Supabase credentials
 - [Current implementation state](docs/CURRENT_STATE.md)
 - [Next 10 build plan](docs/NEXT_10_BUILD_PLAN.md)
 - [Next 10 build plan — round 2](docs/NEXT_10_BUILD_PLAN_ROUND_2.md)
+- [Next 10 release-readiness plan](docs/NEXT_10_RELEASE_READINESS_PLAN.md)
 - [Demo atlas seeding](docs/DEMO_ATLAS_SEEDING.md)
 - [Product specification](docs/PRODUCT_SPECIFICATION.md)
 - [v0.1 implementation plan](docs/V0_1_IMPLEMENTATION_PLAN.md)

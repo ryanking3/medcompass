@@ -16,7 +16,7 @@ The first launch profile is a graduate-entry medical student at RCSI, but the pr
 
 ### Delivery status
 
-This document describes the product direction. MedCompass already has private workspaces, email/password and magic-link authentication, basic account settings, PDF upload/extraction/reading, source-aware manual notes, editable cards, and Anki CSV export. The cited AI tutor, semantic search, diagram understanding, planner, rich-text editing, and wider authentication options remain planned work. See [current state](CURRENT_STATE.md) for the implementation boundary.
+This document describes the product direction. MedCompass already has private workspaces, email/password and magic-link authentication, basic account settings with lightweight export, PDF upload/extraction/continuous reading, source deletion, source-aware manual notes, editable cards, planner-linked fake practice exams, fake AI study flows, and Anki CSV export. Real cited AI, semantic search, diagram understanding, rich-text editing, direct Anki sync, and wider authentication options remain planned work. See [current state](CURRENT_STATE.md) for the implementation boundary.
 
 ## 2. Problem and opportunity
 
