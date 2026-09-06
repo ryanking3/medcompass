@@ -99,6 +99,12 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
     setDocuments((currentDocuments) => currentDocuments.map((document) => document.id === updatedDocument.id ? { ...updatedDocument, linkedTopics: document.linkedTopics } : document));
     setSelectedDocument((document) => document?.id === updatedDocument.id ? { ...updatedDocument, linkedTopics: document.linkedTopics } : document);
   };
+  const handleDocumentDeleted = (documentId: string) => {
+    setDocuments((currentDocuments) => currentDocuments.filter((document) => document.id !== documentId));
+    setSelectedDocument((document) => document?.id === documentId ? null : document);
+    setNotes((currentNotes) => currentNotes.map((note) => ({ ...note, citations: note.citations.filter((citation) => citation.documentId !== documentId) })));
+    setFlashcards((currentCards) => currentCards.map((card) => card.sourceDocumentId === documentId ? { ...card, sourceDocumentId: null, sourceDocumentTitle: null, sourcePageStart: null, sourcePageEnd: null } : card));
+  };
 
   const handleNoteCreated = (note: StudyNote) => setNotes((currentNotes) => [note, ...currentNotes]);
   const handleNoteUpdated = (updatedNote: StudyNote) => setNotes((currentNotes) => currentNotes.map((note) => note.id === updatedNote.id ? updatedNote : note));
@@ -107,6 +113,9 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
   const handleCardDeleted = (cardId: string) => setFlashcards((currentCards) => currentCards.filter((card) => card.id !== cardId));
   const handlePracticeAttemptSaved = (practiceExamId: string, attempt: StudyPracticeExam["attempts"][number]) => {
     setGeneratedPracticeExams((currentExams) => currentExams.map((exam) => exam.id === practiceExamId ? { ...exam, attempts: [attempt, ...exam.attempts] } : exam));
+  };
+  const handlePracticeExamDeleted = (practiceExamId: string) => {
+    setGeneratedPracticeExams((currentExams) => currentExams.filter((exam) => exam.id !== practiceExamId));
   };
 
   const startTimer = (title: string, minutes: number) => {
@@ -184,14 +193,14 @@ export function StudyWorkspace({ userId, email, fullName, initialDocuments, init
       <AppSidebar view={view} onNavigate={setView} onCreateTopic={() => setTopicOpen(true)} email={accountEmail} fullName={accountFullName} onSignOut={signOut} onOpenSettings={() => setView("settings")} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((current) => !current)} courses={courses} selectedCourseId={selectedCourseId} selectedTopicId={selectedTopic?.id ?? null} onSelectCourse={selectCourse} onSelectTopic={selectTopic} />
       <section className="content-area">
         {view === "home" && <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} planBlocks={planBlocks} exams={exams} practiceExams={generatedPracticeExams} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenAtlas={() => setView("atlas")} onOpenPlanner={() => setView("planner")} onOpenPractice={() => setView("practice")} />}
-        {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} onDocumentUpdated={handleDocumentUpdated} />}
+        {view === "library" && <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} onDocumentUpdated={handleDocumentUpdated} onDocumentDeleted={handleDocumentDeleted} />}
         {view === "chat" && <AiChatPage courses={courses} documents={documents} launchContext={chatLaunchContext} onLaunchContextConsumed={() => setChatLaunchContext(null)} onNoteCreated={handleNoteCreated} onCardCreated={handleCardCreated} onOpenNotesForTopic={openNotesForTopic} onOpenCardsForTopic={openCardsForTopic} onOpenLibrary={() => setView("library")} />}
         {view === "atlas" && <StudyAtlas courses={courses} documents={documents} notes={notes} flashcards={flashcards} exams={exams} planBlocks={planBlocks} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenDocument={openDocument} onOpenNotesForTopic={openNotesForTopic} onOpenCardsForTopic={openCardsForTopic} onOpenPlanner={() => setView("planner")} />}
         {view === "planner" && <StudyPlanner courses={courses} exams={exams} availability={availability} planBlocks={planBlocks} onExamsChange={setExams} onAvailabilityChange={setAvailability} onPlanBlocksChange={setPlanBlocks} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenPractice={() => setView("practice")} />}
-        {view === "practice" && <PracticeExams exams={exams} generatedExams={generatedPracticeExams} onGeneratedExamCreated={(exam) => setGeneratedPracticeExams((current) => [exam, ...current])} onAttemptSaved={handlePracticeAttemptSaved} onStartTimer={startTimer} onOpenChatWithContext={openChatWithContext} />}
+        {view === "practice" && <PracticeExams exams={exams} generatedExams={generatedPracticeExams} onGeneratedExamCreated={(exam) => setGeneratedPracticeExams((current) => [exam, ...current])} onAttemptSaved={handlePracticeAttemptSaved} onPracticeExamDeleted={handlePracticeExamDeleted} onStartTimer={startTimer} onOpenChatWithContext={openChatWithContext} />}
         {view === "timer" && <StudyTimer timer={activeTimer} onStart={startTimer} onPauseResume={pauseResumeTimer} onClear={() => setActiveTimer(null)} />}
         {view === "dashboard" && (selectedTopic ? <TopicDashboard topic={selectedTopic} course={courses.find((course) => course.id === selectedCourseId) ?? null} documents={documents} notes={notes} flashcards={flashcards} exams={exams} planBlocks={planBlocks} onOpenDocument={openDocument} onOpenCards={() => setView("cards")} onOpenNotes={() => setView("notes")} onOpenUpload={() => setUploadOpen(true)} onOpenPlanner={() => setView("planner")} onOpenChatWithContext={openChatWithContext} /> : <WorkspaceHome courses={courses} documents={documents} notes={notes} flashcards={flashcards} planBlocks={planBlocks} exams={exams} practiceExams={generatedPracticeExams} onCreateTopic={() => setTopicOpen(true)} onOpenTopic={selectTopic} onOpenLibrary={() => setView("library")} onOpenAtlas={() => setView("atlas")} onOpenPlanner={() => setView("planner")} onOpenPractice={() => setView("practice")} />)}
-        {view === "reader" && (selectedDocument ? <DocumentReader key={selectedDocument.id} document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} onNoteCreated={handleNoteCreated} onOpenNotesForTopic={openNotesForTopic} onCardCreated={handleCardCreated} onOpenCardsForTopic={openCardsForTopic} onOpenChatWithContext={openChatWithContext} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} onDocumentUpdated={handleDocumentUpdated} />)}
+        {view === "reader" && (selectedDocument ? <DocumentReader key={selectedDocument.id} document={selectedDocument} onBack={() => setView("library")} onDocumentUpdated={handleDocumentUpdated} onNoteCreated={handleNoteCreated} onOpenNotesForTopic={openNotesForTopic} onCardCreated={handleCardCreated} onOpenCardsForTopic={openCardsForTopic} onOpenChatWithContext={openChatWithContext} /> : <DocumentLibrary documents={documents} onOpenDocument={openDocument} onOpenUpload={() => setUploadOpen(true)} onDocumentUpdated={handleDocumentUpdated} onDocumentDeleted={handleDocumentDeleted} />)}
         {view === "notes" && <TopicNotes topic={selectedTopic} notes={notes} documents={documents} onBack={() => setView("dashboard")} onNoteCreated={handleNoteCreated} onNoteUpdated={handleNoteUpdated} />}
         {view === "cards" && <TopicCards topic={selectedTopic} cards={flashcards} documents={documents} onBack={() => setView("dashboard")} onCardCreated={handleCardCreated} onCardUpdated={handleCardUpdated} onCardDeleted={handleCardDeleted} />}
         {view === "settings" && <AccountSettings userId={userId} email={accountEmail} fullName={accountFullName} onSignOut={signOut} onProfileUpdated={(nextProfile) => {

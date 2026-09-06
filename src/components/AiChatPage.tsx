@@ -12,6 +12,13 @@ type ChatMessage = {
   result?: AiSourceStudyResponse;
 };
 
+type AiStatus = {
+  mode: "fake" | "openai";
+  label: string;
+  detail: string;
+  missing: string[];
+};
+
 type AiChatPageProps = {
   courses: StudyCourse[];
   documents: StudyDocument[];
@@ -39,6 +46,7 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState<AiSourceAction | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
   const readyDocuments = useMemo(() => documents.filter((document) => document.status === "ready"), [documents]);
   const selectedDocument = documents.find((document) => document.id === selectedDocumentId) ?? readyDocuments[0] ?? documents[0] ?? null;
   const selectedTopic = topics.find((topic) => topic.id === selectedTopicId) ?? topics[0] ?? null;
@@ -50,6 +58,17 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
     "What are the likely MCQ traps in this topic?",
     "Turn the key mechanism into an active recall checklist.",
   ];
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/ai/status")
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        if (!cancelled && payload) setAiStatus(payload as AiStatus);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!launchContext) return;
@@ -157,6 +176,10 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
           <p className="eyebrow">Chat</p>
           <h1>Your source-aware study assistant.</h1>
           <p>Ask questions, draft notes, and make flashcards from your PDFs and topic structure. Responses are fake for now, but the product flow is wired for the real model.</p>
+          {aiStatus && <div className={`ai-status-chip ${aiStatus.mode}`}>
+            <span>{aiStatus.label}</span>
+            <small>{aiStatus.detail}{aiStatus.missing.length ? ` Missing: ${aiStatus.missing.join(", ")}.` : ""}</small>
+          </div>}
         </div>
         <div className="chat-header-actions">
           <button className="button ghost" onClick={() => setStandardsOpen(true)}>AI standards</button>
@@ -289,6 +312,11 @@ export function AiChatPage({ courses, documents, onNoteCreated, onCardCreated, o
         .chat-header-actions { display: flex; gap: 8px; }
         .chat-header h1 { max-width: 700px; margin: 0 0 10px; color: #202b2e; font: 48px Georgia, serif; font-weight: 500; letter-spacing: -1.7px; }
         .chat-header p:not(.eyebrow) { max-width: 720px; margin: 0; color: #66746f; font-size: 14px; line-height: 1.6; }
+        .ai-status-chip { display: inline-grid; gap: 3px; max-width: 520px; margin-top: 14px; padding: 10px 12px; border: 1px solid #dce8df; border-radius: 12px; background: #eef6f0; }
+        .ai-status-chip.fake { border-color: #ead9b9; background: #fff6e3; }
+        .ai-status-chip span { color: #315f54; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+        .ai-status-chip.fake span { color: #72582b; }
+        .ai-status-chip small { color: #65756e; font-size: 11px; line-height: 1.45; }
         .chat-workbench { border: 1px solid #e1e6e1; border-radius: 18px; background: #fffefa; box-shadow: 0 18px 45px rgba(32,52,42,.045); overflow: hidden; }
         .source-readiness-banner { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid #e3e8e2; background: #fff6e3; color: #6d562f; }
         .source-readiness-banner span { flex: 0 0 auto; border-radius: 999px; padding: 5px 8px; background: #f1dfb7; font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }

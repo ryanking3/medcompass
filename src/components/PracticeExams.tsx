@@ -9,6 +9,7 @@ type PracticeExamsProps = {
   generatedExams: StudyPracticeExam[];
   onGeneratedExamCreated: (exam: StudyPracticeExam) => void;
   onAttemptSaved: (practiceExamId: string, attempt: StudyPracticeExamAttempt) => void;
+  onPracticeExamDeleted: (practiceExamId: string) => void;
   onStartTimer: (title: string, minutes: number) => void;
   onOpenChatWithContext: (context: ChatLaunchContext) => void;
 };
@@ -30,13 +31,14 @@ function formatDuration(seconds: number) {
   return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
 }
 
-export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, onAttemptSaved, onStartTimer, onOpenChatWithContext }: PracticeExamsProps) {
+export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, onAttemptSaved, onPracticeExamDeleted, onStartTimer, onOpenChatWithContext }: PracticeExamsProps) {
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState(exams[0]?.id ?? "");
   const [format, setFormat] = useState<MockExamFormat>("mixed");
   const [questionCount, setQuestionCount] = useState(6);
   const [selectedGeneratedId, setSelectedGeneratedId] = useState<string | null>(generatedExams[0]?.id ?? null);
+  const [paperToDelete, setPaperToDelete] = useState<StudyPracticeExam | null>(null);
   const [attemptMode, setAttemptMode] = useState(false);
   const [attemptStartedAt, setAttemptStartedAt] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -45,6 +47,7 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const [savingAttempt, setSavingAttempt] = useState(false);
+  const [deletingPaper, setDeletingPaper] = useState(false);
   const selectedGenerated = generatedExams.find((exam) => exam.id === selectedGeneratedId) ?? generatedExams[0] ?? null;
   const sourceExam = useMemo(() => exams.find((exam) => exam.id === selectedExamId) ?? exams[0] ?? null, [exams, selectedExamId]);
   const upcomingExams = useMemo(() => [...exams].sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime()).slice(0, 3), [exams]);
@@ -162,6 +165,26 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
     });
   };
 
+  const deletePracticePaper = async () => {
+    if (!paperToDelete || deletingPaper) return;
+    setDeletingPaper(true);
+    setFeedback("");
+    const response = await fetch(`/api/practice-exams/${paperToDelete.id}`, { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    setDeletingPaper(false);
+    if (!response.ok) {
+      setFeedback(payload.error ?? "We couldn't delete that practice paper.");
+      return;
+    }
+    onPracticeExamDeleted(paperToDelete.id);
+    setSelectedGeneratedId((currentId) => currentId === paperToDelete.id ? generatedExams.find((exam) => exam.id !== paperToDelete.id)?.id ?? null : currentId);
+    setPaperToDelete(null);
+    setAttemptMode(false);
+    setAnswers({});
+    setSelectedAttemptId(null);
+    setFeedback("Practice paper deleted.");
+  };
+
   return (
     <div className="practice-page">
       <header className="practice-header">
@@ -224,6 +247,7 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
                 <button className="button ghost" onClick={() => openPracticeReviewChat(lastAttempt)}>Review with Chat</button>
                 {attemptMode ? <button className="button dark" onClick={finishAttempt} disabled={savingAttempt}>{savingAttempt ? "Saving…" : "Finish attempt"}</button> : <button className="button ghost" onClick={startAttempt}>Start timed attempt · {attemptMinutes}m</button>}
                 <button className="button ghost" onClick={openGenerator}>Generate another</button>
+                <button className="button danger small-danger" onClick={() => setPaperToDelete(selectedGenerated)}>Delete</button>
               </div>
             </div>
             {lastAttempt && !attemptMode && <div className="attempt-banner calm">
@@ -346,6 +370,18 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
         </section>
       </div>}
 
+      {paperToDelete && <div className="practice-drawer-backdrop" onMouseDown={() => setPaperToDelete(null)}>
+        <section className="delete-paper-modal" role="dialog" aria-modal="true" aria-labelledby="delete-paper-title" onMouseDown={(event) => event.stopPropagation()}>
+          <p className="eyebrow">Delete paper</p>
+          <h2 id="delete-paper-title">Delete this practice paper?</h2>
+          <p>This removes <strong>{paperToDelete.title}</strong> and its saved attempts. Your original planner exam and topic data stay untouched.</p>
+          <div className="modal-actions">
+            <button className="button ghost" onClick={() => setPaperToDelete(null)} disabled={deletingPaper}>Cancel</button>
+            <button className="button danger" onClick={deletePracticePaper} disabled={deletingPaper}>{deletingPaper ? "Deleting…" : "Delete paper"}</button>
+          </div>
+        </section>
+      </div>}
+
       <style jsx>{`
         .practice-page { max-width: 1280px; margin: 0 auto; padding: 55px 58px 100px; }
         .practice-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 30px; }
@@ -374,6 +410,8 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
         .paper-heading { align-items: center; margin-bottom: 14px; padding-bottom: 20px; border-bottom: 1px solid #edf0ec; }
         .paper-heading p:not(.eyebrow) { margin: 6px 0 0; color: #6b7974; font-size: 12px; }
         .paper-actions { display: flex; gap: 8px; }
+        .small-danger { padding: 10px 12px; box-shadow: none; }
+        .button.danger { color: #fffefa; background: #944b45; box-shadow: 0 8px 17px rgba(148,75,69,.16); }
         .attempt-banner { display: flex; justify-content: space-between; gap: 18px; margin: 0 0 18px; padding: 14px 16px; border: 1px solid #cfe2d4; border-radius: 13px; background: linear-gradient(135deg, #e9f4ec, #fffefa); }
         .attempt-banner.calm { border-color: #e0e8e2; background: #fbfcf9; }
         .attempt-banner div { display: grid; gap: 3px; }
@@ -405,6 +443,9 @@ export function PracticeExams({ exams, generatedExams, onGeneratedExamCreated, o
         .practice-empty p { max-width: 420px; margin: 0; font-size: 13px; line-height: 1.55; }
         .practice-drawer-backdrop { position: fixed; inset: 0; z-index: 90; display: flex; justify-content: flex-end; background: rgba(22,36,31,.24); backdrop-filter: blur(4px); }
         .practice-drawer { width: min(470px, 100%); height: 100%; overflow: auto; padding: 28px; border-left: 1px solid #dce6de; background: #fffefa; box-shadow: -24px 0 60px rgba(24,43,36,.15); }
+        .delete-paper-modal { align-self: center; width: min(460px, calc(100% - 48px)); margin: auto; padding: 24px; border: 1px solid #ead0cc; border-radius: 16px; background: #fffefa; box-shadow: 0 24px 70px rgba(24,43,36,.18); }
+        .delete-paper-modal h2 { margin: 0 0 10px; color: #263d37; font: 26px Georgia, serif; font-weight: 500; }
+        .delete-paper-modal p:not(.eyebrow) { margin: 0; color: #66746f; font-size: 13px; line-height: 1.55; }
         .history-drawer { width: min(620px, 100%); }
         .history-list { display: grid; gap: 10px; margin-top: 24px; }
         .history-row { width: 100%; padding: 15px; border: 1px solid #e0e8e2; border-radius: 12px; background: #fbfcf9; text-align: left; }

@@ -26,7 +26,8 @@ export function AccountSettings({ userId, email, fullName, onProfileUpdated, onS
   const [profileFeedback, setProfileFeedback] = useState<Feedback>(null);
   const [emailFeedback, setEmailFeedback] = useState<Feedback>(null);
   const [passwordFeedback, setPasswordFeedback] = useState<Feedback>(null);
-  const [saving, setSaving] = useState<"profile" | "email" | "password" | null>(null);
+  const [exportFeedback, setExportFeedback] = useState<Feedback>(null);
+  const [saving, setSaving] = useState<"profile" | "email" | "password" | "export" | null>(null);
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -104,6 +105,30 @@ export function AccountSettings({ userId, email, fullName, onProfileUpdated, onS
     setPasswordFeedback({ type: "success", message: "Your password has been updated." });
   }
 
+  async function exportWorkspace() {
+    setSaving("export");
+    setExportFeedback(null);
+    const response = await fetch("/api/account/export");
+    setSaving(null);
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      setExportFeedback({ type: "error", message: payload.error ?? "We couldn't export your workspace." });
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `medcompass-export-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setExportFeedback({ type: "success", message: "Workspace export downloaded." });
+  }
+
   return (
     <div className="page settings-page">
       <header className="page-header settings-header">
@@ -146,6 +171,16 @@ export function AccountSettings({ userId, email, fullName, onProfileUpdated, onS
             <button className="button primary" type="submit" disabled={saving === "password"}>{saving === "password" ? "Updating…" : "Update password"}</button>
           </form>
           {passwordFeedback && <p className={`settings-feedback ${passwordFeedback.type}`} role={passwordFeedback.type === "error" ? "alert" : "status"}>{passwordFeedback.message}</p>}
+        </section>
+
+        <section className="settings-card settings-card-wide settings-data-card">
+          <div>
+            <p className="eyebrow">Data</p>
+            <h2>Export your workspace</h2>
+            <p>Download a JSON copy of your courses, topics, source metadata, notes, cards, planner data, and practice history. PDF files and extracted page text are not included yet.</p>
+          </div>
+          <button className="button ghost" type="button" onClick={exportWorkspace} disabled={saving === "export"}>{saving === "export" ? "Exporting…" : "Download export"}</button>
+          {exportFeedback && <p className={`settings-feedback ${exportFeedback.type}`} role={exportFeedback.type === "error" ? "alert" : "status"}>{exportFeedback.message}</p>}
         </section>
 
         <section className="settings-card settings-card-wide settings-signout-card">
